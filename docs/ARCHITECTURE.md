@@ -1,5 +1,19 @@
 # Assessment: smallest local second-army extension
 
+**Current Phase 2 addition:** [NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md) specifies
+the implemented command/state boundary. `app/coop/simulation.py` drives the
+existing LT actions/states in one headless authoritative process. `server.py`
+serializes commands and broadcasts discrete snapshots; `protocol.py` strictly
+validates versioned JSON. `client.py` owns a verified state model and TCP input,
+while `view.py` is an independent pygame map/command interface. Clients do not
+import the LT simulation, run combat, roll RNG or stream desktop frames.
+
+This milestone adds isolated modules and launchers, with no further upstream
+engine source edits. It reuses the hot-seat scenario and only substitutes its
+terminal presentation events in memory so the host can publish a final board.
+Ordinary single-player and hot-seat launchers remain separate. The assessment
+below records the earlier engine investigation and the basis for these choices.
+
 Inspected installed baseline `3ba9bd923c82b36c0d57767a75d540f2bcdbc166`,
 engine version `2026.10.18a`, on October 27, 2026. Source:
 [Lex Talionis / LT-Maker](https://gitlab.com/rainlash/lt-maker).
@@ -41,9 +55,15 @@ Findings below come from this checkout, not an assumption of built-in multiplaye
 The prototype uses one keyboard/mouse and one game process. Passing the phase
 passes control to the next person. There are no separately authenticated players.
 The demo disables initiative, turnwheel and campaign save/suspend options; these
-require broader work than the local experiment. There is no networking code.
+require broader work than the local experiment. These statements describe the
+Phase 1 launcher; Phase 2 networking is provided by the separate modules above.
 
-## Next architecture decision: host authority
+## Host-authority design: implemented subset and future work
+
+The command boundary, server-only RNG/AI, quiescent snapshots and live-host
+reconnect below now have a bounded v1 implementation. The full campaign snapshot,
+event-log replay and internet requirements remain design work; the v1 public
+projection is deliberately not a full LT save. See the contract for exact limits.
 
 Use one authoritative engine simulation and discrete commands, rather than
 continuous position replication. Keep commands distinct from presentation input:

@@ -1,11 +1,35 @@
-# Local cooperative experiment
+# Two Banners — cooperative tactical prototype
+
+Phase 2 now provides one authoritative Lex Talionis host and **two independent
+graphical clients** on the same PC. Blue and Green submit tactical commands;
+the host resolves movement, combat, inventory durability, objectives and Red AI.
+Both clients receive verified, revisioned state. This is local networking;
+internet play, campaign saves and full Green progression parity are not ready.
+
+Run these in three terminals from this repository root:
+
+```powershell
+.venv\Scripts\python.exe run_network.py host
+.venv\Scripts\python.exe run_network.py client --session-file artifacts/network/blue.json
+.venv\Scripts\python.exe run_network.py client --session-file artifacts/network/green.json
+```
+
+Wait for `HOST_READY` before starting clients. Click your unit, then a highlighted
+tile to move or an adjacent enemy to attack. W waits; E ends your army's phase;
+R resynchronizes. The other player's units are inspectable but cannot be
+commanded. Keep generated credential files private and untracked.
+
+See [network contract](docs/NETWORK_PROTOCOL.md), [launch/testing procedures](docs/TESTING.md),
+[current progress](docs/PROGRESS.md), and [roadmap](docs/ROADMAP.md).
+
+## Existing hot-seat experiment
 
 Run `.venv\Scripts\python.exe run_coop.py` for the original Blue -> Green -> Red
 hot-seat test map. Two allied armies share the battlefield against the existing
 enemy AI. See [testing](docs/TESTING.md) for controls, setup and verification,
 [architecture](docs/ARCHITECTURE.md) for the engine assessment, and
 [roadmap](docs/ROADMAP.md) / [progress](docs/PROGRESS.md) for scope and status.
-Networking and campaign progression are not implemented.
+The original hot-seat launcher remains available. Campaign progression is not implemented.
 
 Development is maintained at [Eren-Enou/FireEmblem-GBA-Coop](https://github.com/Eren-Enou/FireEmblem-GBA-Coop).
 `origin` is this GitHub repository; `upstream` is the original

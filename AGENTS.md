@@ -7,12 +7,16 @@ https://gitlab.com/rainlash/lt-maker.
 
 The goal is two independent online clients, each owning an allied army against
 shared enemy AI, followed by cooperative campaign progression. Current completed
-scope is local hot-seat play: Blue -> Green -> Red AI. The next milestone is a
-host-authoritative command/snapshot design and a local network proof of concept.
+scope includes hot-seat play and a loopback network vertical slice: one LT host,
+two independent graphical clients, Blue -> Green -> Red AI, versioned commands,
+authoritative state and live-host reconnect/resync. Internet play, campaign saves
+and full tactical parity remain unimplemented. Next: two-person exploratory
+testing and a reviewed internet-connectivity/security design.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
-[asset policy](docs/ASSET_POLICY.md) before changing the prototype. These are the
+[asset policy](docs/ASSET_POLICY.md) and [network contract](docs/NETWORK_PROTOCOL.md)
+before changing the prototype. These are the
 canonical project records; `docs/source/` remains upstream engine documentation.
 
 ## Repository
@@ -42,6 +46,14 @@ canonical project records; `docs/source/` remains upstream engine documentation.
   to explicit integration points and describe them in the architecture document.
 - Keep future command/transport code independent of SDL input and presentation.
   Host validation must not rely on the current local UI ownership guard.
+- Extend `app/coop/` and `run_network.py` for networking; do not create another
+  combat solver or import the test harness into production. `simulation.py`
+  adapts LT, `server.py` serializes authority, `protocol.py` validates JSON,
+  `client.py` maintains verified state, and `view.py` presents it independently.
+- Networking is loopback-only in v1. Do not expose the plaintext bearer-token
+  service publicly or load remote data through pickle. Credential files and
+  process reports belong under ignored `artifacts/`. A state projection is not
+  a campaign save; follow the versioned contract when extending it.
 - Add engine-harness tests for ownership and tactical behavior. Follow docs/TESTING.md
   for the targeted checks. Record actual outcomes and unresolved failures.
 - Do not add networking until local acceptance checks pass; never describe

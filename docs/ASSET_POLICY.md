@@ -41,6 +41,11 @@ them. Removing them from a future distribution requires an asset-by-asset audit.
 Removing them from shared history would require a separately planned history
 migration; do not force-push or silently rewrite that history.
 
-The maintenance milestone must contain documentation and ignore rules only.
-Its staged-file audit does not constitute a full historical secret or licensing
-audit. See [progress](PROGRESS.md) for the actual validation results.
+The earlier repository-maintenance milestone contained documentation and ignore
+rules only. Phase 2 adds Python networking, simulation-adapter, rendering and test
+code plus documentation. Its clients draw original geometric tokens using system
+fonts; no new binary game assets are added. The host still requires the installed
+sample project's inherited resources. Generated screenshots, credential files,
+logs and reports stay in ignored `artifacts/` or disposable test directories.
+Scoped staged-file audits do not constitute a full historical secret or licensing
+audit. See [progress](PROGRESS.md) for actual validation results.

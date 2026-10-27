@@ -1,5 +1,98 @@
 # Progress — October 27, 2026
 
+## Current milestone: Phase 2 local network multiplayer
+
+Implemented a working vertical slice extending the existing hot-seat map:
+
+- `run_network.py host`: one authoritative LT engine process, listening only on
+  loopback. `app/coop/simulation.py` reuses LT movement, combat/counters, inventory
+  durability, RNG, phase/upkeep/event handling and enemy AI. No second solver or
+  test-harness dependency is used in production.
+- `run_network.py client`: two separate pygame client processes/windows, each
+  with independent input and an original geometric map renderer. Blue and Green
+  are bound to host-generated credentials and exclusive seats. Commands contain
+  tactical intent, not keyboard events or remote desktop frames.
+- Version 1 strict, bounded JSON contract; Move/Attack/Wait/EndPhase requests;
+  ownership, phase, path/occupancy/range/inventory checks on the host; per-army
+  unique IDs; stale, duplicate, malformed and wrong-session rejection.
+- Host-only random resolution and ordered authoritative snapshots. Both clients
+  see positions, HP, inventories/durability, turn, objectives, all three RNG
+  stream states and the same projection digest/revision. Green End includes the
+  entire Red AI phase as one atomic command result.
+- Live-host disconnect pause, same-army rejoin using the existing credential,
+  manual resync and automatic checksum-failure resync. Unexpected engine failure
+  publishes a terminal fault revision and freezes further commands.
+- The final board remains visible on shared victory/defeat; no campaign/title
+  transition or save is attempted by the network session.
+- Added isolated `app/coop/` modules, launchers, a three-process smoke utility and
+  networking tests. No additional upstream engine source edits or binary assets.
+
+The executable contract and precise limits are in
+[NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md). Launch commands, controls and test
+procedures are in [TESTING.md](TESTING.md).
+
+### Verified evidence
+
+- Real three-process graphical smoke passed: one host, distinct Blue and Green
+  client PIDs, 10 identical observed snapshots, final revision 9 on Green turn 2.
+  Both armies moved and used real LT combat with HP/durability changes; Red AI
+  moved/fought on the host. Blue rendering was visually inspected. Reports,
+  screenshots, logs and credentials remain ignored local outputs. The final
+  Green rendering was also visually inspected.
+- Standalone network suite: **22 passed in 23.580 seconds**. Includes actual TCP
+  reconnect/resync, fragmented requests with 20ms delays, malformed frames and
+  wrong credentials, as well as real-client recovery from an injected bad digest.
+- Earlier combined run: **94 passed in 54.016 seconds**, covering 21 network tests
+  plus all 73 existing selected hot-seat/AI/movement/canto/save regressions.
+  Final combined run including automatic recovery: **95 passed in 52.002 seconds**
+  (22 network tests plus 73 existing selected regressions).
+- Final CLI smoke rerun passed with host PID 42488, client PIDs 165580/137864,
+  10 matching snapshots, revision 9 and matching state digest. Both graphical
+  clients completed their scripts; the utility stopped its own child processes.
+- Final staged audit passed for 17 Python/Markdown files: Python syntax and
+  staged whitespace valid, 31 resolving local document links, no new media or
+  matching credential signatures, no tracked local outputs and unchanged
+  upstream license/credits. This is a scoped audit, not a full historical scan.
+- No full repository suite, manual two-person UI playthrough, internet/separate-PC
+  session, load/packet-loss test, full security audit or campaign persistence test
+  has been completed. Existing editor smoke was not rerun: no editor code changed.
+
+### Limits, blockers and next steps
+
+This is genuine local client/server gameplay, not the finished product. Clients
+use a minimal independent map interface, with immediate committed moves and
+authoritative result updates rather than full LT menus/combat animations. Only
+move, axe attack, wait and end-phase are supported on the original test scenario.
+Green XP/leveling parity, healing/trade/abilities, recruitment, deployment,
+multi-chapter progression and campaign saves remain unimplemented.
+
+Transport is plaintext, loopback-only; token possession grants that army's seat.
+Do not forward/expose its port. Live-host rejoin needs a manual client relaunch;
+host restart loses the session. Snapshot hashes cover the documented projection,
+not a complete restorable LT campaign. Host resolution temporarily blocks I/O.
+Inherited sample asset rights still need auditing before a distributable game.
+
+Next actionable work: two-human local exploratory playtesting, then design
+internet transport/server identity and safe credentials before any public
+connectivity. Expand tactical commands/progression using the existing engine,
+and define a separate validated campaign-save schema rather than treating the
+v1 projection as a save file. See [ROADMAP.md](ROADMAP.md).
+
+### Experiments and fixes
+
+- Direct LT adapter probe resolved movement, Green combat/counters and a Red AI
+  round before adding the transport, without modifying the existing engine.
+- An initial negative test reused a request ID and reached duplicate rejection
+  before wrong-session validation. The test now uses distinct IDs; duplicate
+  priority and no-mutation behavior remain intentional.
+- Review caught Python's non-ASCII string compare_digest limitation;
+  authentication uses UTF-8 bytes, with a raw-socket rejection test.
+- An automatic-recovery socket test corrupts one published snapshot and verifies
+  a real client discards it, requests the unchanged authoritative revision, and
+  converges exactly with the other client without another simulation action.
+
+## Earlier milestones (historical records)
+
 ## Repository maintenance milestone
 
 - Canonical project repository: `https://github.com/Eren-Enou/FireEmblem-GBA-Coop`.
@@ -36,7 +129,7 @@ Next steps: two-person local exploratory playtest, then design the authoritative
 command/result/snapshot contract and implement the Phase 2 local-network proof
 of concept. Follow the milestone workflow in [AGENTS.md](../AGENTS.md).
 
-## Delivered
+## Earlier Phase 1 delivery
 
 The first assignment's local experiment is implemented. One engine instance
 supports two separately owned allied armies on an original map: two Blue units,
@@ -56,7 +149,8 @@ Blue-only behavior remains the fallback when the opt-in game var is absent.
 
 The architectural assessment is in [ARCHITECTURE.md](ARCHITECTURE.md); later work
 is in [ROADMAP.md](ROADMAP.md).
-No networking or campaign conversion was started.
+At that milestone no networking or campaign conversion had been started; current
+networking status is recorded above.
 
 ## Verification
 
@@ -92,7 +186,7 @@ No networking or campaign conversion was started.
   consumes it immediately and performs chapter cleanup. The check observes the
   real completion path and previous-level marker instead.
 
-## Limits and next work
+## Earlier Phase 1 limits and next work
 
 - Local hot-seat control uses one input device and one process. No player
   authentication, server or client synchronization exists.

@@ -34,17 +34,31 @@
 The implemented experiment meets the local control goal. It is not full gameplay
 parity: Green XP/leveling, roster menus, supports and campaign saves are deferred.
 
-## Phase 2: local network proof of concept (not started)
+## Phase 2: local network vertical slice (implemented and automated)
 
-- Define command validation and versioned authoritative snapshots/results first.
-- Minimal host and two independent clients; local connections and team assignment.
-- Ownership/path/attack validation, authoritative RNG and ordered results.
-- Tests for rejection, duplicate/stale commands, phase handoff, identical positions,
-  HP and inventory, and digest mismatch recovery.
+- [x] Versioned, bounded JSON commands and authoritative state/result contract.
+- [x] One LT host and two independent graphical clients over loopback TCP.
+- [x] Host-issued bearer credentials bound to exclusive Blue/Green seats.
+- [x] Engine-based move/attack/wait/end-phase validation and authoritative RNG/AI.
+- [x] Monotonic revisions; duplicate, stale, malformed and wrong-army rejection.
+- [x] Full discrete state snapshots with HP, positions, durability and digest checks.
+- [x] Pause on disconnect; same-seat live-host rejoin and authoritative resync.
+- [x] Real-client automatic recovery from an injected corrupt snapshot.
+- [x] Three-process graphical acceptance test compares every observed revision,
+  demonstrates movement/combat for both armies and resolves Red AI.
+- [ ] Two humans explore the client controls and play the full test map to an outcome.
+- [ ] Improve tactical presentation/command UX after that feedback.
+
+This slice uses a separate lightweight client renderer; it does not mirror LT's
+full menus/animations. Moves commit immediately; Red resolves atomically between
+human phases. Client reconnect needs a manual relaunch; host-restart recovery,
+durable saves, internet transport and full tactical/campaign parity remain open.
 
 ## Phase 3: internet sessions (not started)
 
 - Document host/join setup and choose a connectivity strategy.
+- Review TLS/server identity and credential handling before public connectivity;
+  v1 loopback plaintext must not be exposed through forwarding.
 - Authenticate reconnects; retain results/snapshots by revision.
 - Test latency, dropped/duplicated traffic, disconnects, reconnects and malformed
   commands before making internet-play claims.

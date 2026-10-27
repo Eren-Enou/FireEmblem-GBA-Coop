@@ -1,0 +1,159 @@
+"""Network client/model: validated snapshots only, no LT or combat simulation."""
+import queue
+import socket
+import threading
+import uuid
+
+from app.coop.protocol import (MAX_FRAME, TEAMS, VERSION, ProtocolError, decode,
+                               encode, fields, integer, require, string, validate_packet,
+                               validate_request)
+
+
+class Model:
+    def __init__(self):
+        self.team = None
+        self.packet = None
+        self.peers = []
+        self.pending = None
+        self.syncing = False
+        self.message = 'Connecting'
+        self.observed = []
+
+    def apply(self, packet):
+        require(type(packet) is dict and type(packet.get('v')) is int and packet['v'] == VERSION)
+        kind = packet.get('type')
+        if kind == 'welcome':
+            fields(packet, ('v', 'type', 'team', 'snapshot'))
+            require(self.team is None and packet['team'] in TEAMS)
+            self.team = packet['team']
+            return self.apply(packet['snapshot'])
+        if kind == 'state':
+            validate_packet(packet)
+            if self.packet:
+                require(packet['session'] == self.packet['session'], 'wrong_session')
+                require(packet['state']['ruleset'] == self.packet['state']['ruleset'], 'ruleset_changed')
+                if packet['revision'] < self.packet['revision']:
+                    return
+                if packet['revision'] == self.packet['revision']:
+                    require(packet['digest'] == self.packet['digest'], 'conflicting_revision')
+            self.packet = packet
+            self.syncing = False
+            self.pending = None
+            result = packet['result']
+            self.message = result['summary'] if result else 'Connected; waiting for both armies'
+            if not self.observed or self.observed[-1]['revision'] != packet['revision']:
+                self.observed.append(packet)
+                # UI history is not a campaign save or replay journal.
+                self.observed = self.observed[-128:]
+        elif kind == 'peers':
+            fields(packet, ('v', 'type', 'teams'))
+            require(type(packet['teams']) is list and len(packet['teams']) <= 2)
+            require(all(t in TEAMS for t in packet['teams']) and len(set(packet['teams'])) == len(packet['teams']))
+            self.peers = packet['teams']
+        elif kind == 'reject':
+            fields(packet, ('v', 'type', 'id', 'code', 'revision'))
+            integer(packet['revision'])
+            string(packet['code'])
+            require(type(packet['id']) is str and len(packet['id']) <= 64)
+            if packet['id'] == self.pending:
+                self.pending = None
+            self.message = 'Rejected: ' + packet['code']
+            if self.packet and (packet['revision'] != self.packet['revision'] or
+                                packet['code'] in ('state_mismatch', 'stale_phase', 'stale_revision')):
+                self.syncing = True
+        elif kind == 'error':
+            fields(packet, ('v', 'type', 'code'))
+            string(packet['code'])
+            raise ProtocolError(packet['code'])
+        else:
+            raise ProtocolError('unknown_server_message')
+
+    @property
+    def can_act(self):
+        return bool(self.packet and set(self.peers) == set(TEAMS) and not self.pending and
+                    not self.syncing and self.packet['state']['status'] == 'playing' and
+                    self.packet['state']['phase'] == self.team)
+
+    def command(self, action, **kwargs):
+        require(self.can_act, 'client_not_ready')
+        packet = self.packet
+        request = {'v': VERSION, 'type': 'command', 'session': packet['session'],
+                   'id': uuid.uuid4().hex, 'revision': packet['revision'],
+                   'phase': packet['state']['phase'], 'digest': packet['digest'],
+                   'action': action, **kwargs}
+        validate_request(request)
+        self.pending = request['id']
+        return request
+
+
+class Connection:
+    def __init__(self, host, port, token):
+        # Phase 2 transport is intentionally local-only. No false internet claim.
+        require(host in ('127.0.0.1', 'localhost'), 'loopback_only')
+        integer(port, 1, 65535)
+        self.socket = socket.create_connection((host, port), timeout=10)
+        self.stream = self.socket.makefile('rb')
+        self.model = Model()
+        self.inbox = queue.Queue(maxsize=128)
+        self.closed = False
+        self.send({'v': VERSION, 'type': 'hello', 'token': token})
+        try:
+            self.model.apply(self.read())
+            require(self.model.team is not None, 'missing_welcome')
+        except Exception:
+            self.close()
+            raise
+        self.socket.settimeout(None)
+        self.thread = threading.Thread(target=self.receive, daemon=True)
+        self.thread.start()
+
+    def send(self, packet):
+        self.socket.sendall(encode(packet))
+
+    def read(self):
+        line = self.stream.readline(MAX_FRAME + 1)
+        if not line:
+            raise ConnectionError('Host disconnected')
+        return decode(line)
+
+    def receive(self):
+        try:
+            while not self.closed:
+                self.inbox.put(self.read(), timeout=5)
+        except (OSError, ValueError, queue.Full) as exc:
+            if not self.closed:
+                try:
+                    self.inbox.put_nowait(exc)
+                except queue.Full:
+                    self.closed = True
+
+    def poll(self):
+        while True:
+            try:
+                packet = self.inbox.get_nowait()
+            except queue.Empty:
+                return
+            if isinstance(packet, Exception):
+                self.close()
+                raise packet
+            try:
+                self.model.apply(packet)
+            except ProtocolError as exc:
+                if str(exc) == 'digest_mismatch':
+                    self.model.syncing = True
+                    self.model.message = 'State check failed; requesting authoritative resync'
+                    self.send({'v': VERSION, 'type': 'sync'})
+                    continue
+                self.close()
+                raise
+            if self.model.syncing:
+                self.send({'v': VERSION, 'type': 'sync'})
+
+    def close(self):
+        self.closed = True
+        try:
+            self.socket.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        self.stream.close()
+        self.socket.close()
