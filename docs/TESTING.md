@@ -1,6 +1,56 @@
 # Environment and verification
 
-## Phase 3A playability verification
+## Phase 4A progression verification
+
+Use the existing Python 3.12 environment. OpenSSL CLI must be on PATH for TLS
+identity tests; the game transport and progression add no dependencies.
+
+```powershell
+.venv\Scripts\python.exe utilities/audit_campaign_readiness.py
+.venv\Scripts\python.exe -m unittest app.tests.test_coop_progression -q
+.venv\Scripts\python.exe -m unittest app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe utilities/smoke_network.py --tls --progression
+```
+
+Executed October 27, 2026: **143 tests passed in 140.583 seconds**. That includes
+16 new progression tests, all 112 prior selected regressions and 15 existing
+classic-XP/reroll/level-up-timing checks. No full repository-suite claim. The
+existing OpenSSL binary directory was prepended to this process's PATH as in
+Phase 3A; no software or system settings changed.
+
+The 16 tests cover real hit/miss/kill/counter/unarmed combat, Red-phase rewards,
+XP multipliers, fractional weapon XP, skill-driven mana caps, exact/below/above
+100-XP thresholds, Fixed/Random/Dynamic selection and actual stat application,
+repeated combat level-ups and class/stat caps, single-player/nonhuman fallback,
+Red exclusion, and an actual follow-up hit dealing one additional damage.
+Controlled solver scripts and fixture initial conditions do not replace XP or
+level calculations. Socket checks compare complete host/Blue/Green snapshots,
+verify duplicate/resync/rejoin cannot reapply growth, recover after a level-up,
+exercise the grown unit on a subsequent turn, reject forged progression fields
+through ingress, reject v1 and validate malformed mana/weapon-XP projections.
+
+The new three-process test uses the optional original progression drill. Both
+captains start level 1/95 XP with a declared 40-HP human class inheriting Fighter
+growths. Real combat reaches level 2/5 XP/max HP 41/STR 8; Red AI still runs.
+Training/project data are unchanged. See [PROGRESSION.md](PROGRESSION.md) for
+manual inspection, exact fixture differences and expected outcomes.
+
+After a final layout adjustment, both training and progression graphical
+process tests passed again: **2 in 8.861 seconds**. Explicit final TLS growth smoke
+passed with host 158968 and clients 149844/167652, eight equal snapshots through
+revision 7 on Green turn 2. Ignored evidence: `artifacts/network-smoke/run-536fec41/`.
+Green render was inspected for selected stats, XP/level notices and TLSv1.3.
+Scripts drive the actual command/model/rendering boundary, not physical mouse input.
+
+Initial failures were a v2-validator local-variable shadow, a test fixture whose
+captain died before follow-up inspection, and a mistaken test assumption that
+misses always consume durability. All were resolved as documented in
+[PROGRESS.md](PROGRESS.md), preserving combat rules and normal training. Earlier
+focused 14-test progression run passed in 43.314 seconds; later additions are
+included in the 143-test combined run. Separate-PC/WAN and two-human exploration,
+custom event/promotions, persistence and a full asset audit remain outstanding.
+
+## Earlier Phase 3A playability verification
 
 From the actual repository root, using the documented Python 3.12 environment
 and OpenSSL CLI on PATH for TLS test identities:

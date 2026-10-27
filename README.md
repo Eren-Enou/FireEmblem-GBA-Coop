@@ -1,6 +1,6 @@
 # Two Banners — cooperative tactical prototype
 
-Phase 3A provides one authoritative Lex Talionis host and **two independent
+The project provides one authoritative Lex Talionis host and **two independent
 graphical clients**. Blue and Green command their own armies; the host resolves
 movement, combat, durability, objectives and Red AI. Local automation verifies
 complete battles, identical authoritative state, heartbeat failures and live-host
@@ -10,7 +10,10 @@ Verified TLS supports private remote endpoints. Follow the
 [Windows two-PC playtest procedure](docs/INTERNET_PLAY.md) for environment setup,
 identity creation, private army invitations, controls, a complete battle and
 reconnection. **Actual two-PC Internet play remains unverified.** Campaign saves,
-full Green progression parity and public matchmaking are not implemented.
+public matchmaking and advanced tactical parity are not implemented. Blue and
+Green now gain combat XP and level through the same player growth rules. See the
+[progression drill](docs/PROGRESSION.md) for a reproducible two-army level-up.
+Protocol v2 requires updating host and clients together.
 [Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:

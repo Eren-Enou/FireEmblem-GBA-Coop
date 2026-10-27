@@ -13,8 +13,10 @@ authoritative state and live-host reconnect/resync. Optional verified TLS and
 remote endpoint configuration, heartbeat loss detection, bounded private-session
 admission/rates, cooperative same-thread engine resolution and complete network
 battles are implemented and tested locally. Rejoin is a manual client relaunch;
-separate-PC Internet play remains unverified. Campaign saves and full tactical parity are
-not implemented; concrete engine-based methods and gates are documented.
+separate-PC Internet play remains unverified. Phase 4A adds human-army XP/mana
+eligibility and player growth selection, real fixed/random/dynamic combat level-ups,
+protocol-v2 weapon XP/mana projections and a separate progression drill. Campaign
+saves and full tactical parity are not implemented; concrete engine-based methods and gates are documented.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
@@ -55,6 +57,13 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   combat solver or import the test harness into production. `simulation.py`
   adapts LT, `server.py` serializes authority, `protocol.py` validates JSON,
   `client.py` maintains verified state, and `view.py` presents it independently.
+- Use `human_control.is_human_team` for XP/mana eligibility and player growth
+  selection, independent of the active phase. Preserve Blue-only fallback without
+  `_human_teams`; do not broaden unrelated team checks. Keep LT's formulas,
+  caps, growth generators and ExpState/actions as the only progression mechanism.
+- Keep the controlled `app/coop/progression_demo.py` drill separate from canonical
+  training: 95 starting XP and 40 human HP are declared fixture initial conditions,
+  not rewards or normal campaign defaults. Protocol v2 requires matching clients.
 - Hold the session lock across cooperative engine-step yields and publication.
   Heartbeat/read tasks may run between steps but must never access engine state.
   Do not put LT simulation in independent threads or automatically replay a

@@ -1,6 +1,8 @@
 # Campaign saves and full tactical parity: implementation methods
 
-Status: **design and engine-readiness audit**, not a save/load or parity feature.
+Status: Phase 4A core XP/level/growth parity is implemented and locally tested;
+see [PROGRESSION.md](PROGRESSION.md). Campaign saves and the broader parity
+methods below remain design work, not implemented campaign features.
 This document follows the tested [Internet transport path](INTERNET_PLAY.md).
 It preserves the full goal: two allied commanders completing multiple chapters
 with independent development, equipment and persistent ownership.
@@ -15,13 +17,13 @@ Reproduce the audit without writing/loading a game save:
 
 It writes an ignored diagnostic report. Both combat probes use the same class,
 weapon, enemy, adjacent position and combat RNG state in fresh simulations; the
-only army/phase difference is Blue versus Green. This isolates a concrete parity
-gate without promising that all mechanics are equivalent.
+only army/phase difference is Blue versus Green. This originally exposed Blue 10 XP versus Green 0; it now reports 10 for both.
+It does not establish broader campaign parity.
 
 | Finding | Source / consequence |
 | --- | --- |
-| Combat XP is gated on `team == 'player'` for attacker and defender | `app/engine/combat/simple_combat.py:handle_exp`; Green needs both active and counterattack XP |
-| Growth method treats non-Blue as enemy leveling | `app/engine/unit_funcs.py:get_leveling_method`; parity cannot stop at XP |
+| Historical Blue-only attacker/defender XP gate, resolved in Phase 4A | `SimpleCombat.handle_exp` now uses phase-independent human membership; equivalent audit combat awards 10 XP to both armies |
+| Historical non-Blue enemy-growth selection, resolved in Phase 4A | `unit_funcs.get_leveling_method` now uses configured player growth for both human armies; enemy policy is retained |
 | Default trading requires the same team as well as alliance | `app/engine/component_system/skill_system_base.py:Defaults.can_trade`; Blue/Green alliance alone is insufficient |
 | Recruit-to-player clears AI only for Blue | `app/engine/action.py:ChangeTeam`; Green recruitment needs controller ownership and AI updates too |
 | Party/roster queries filter `player` and persistence | `app/engine/game_state.py:get_all_units_in_party`, `get_all_player_units`; deployment/cleanup need owned-roster queries |

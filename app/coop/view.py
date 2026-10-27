@@ -47,13 +47,14 @@ def scripted_step(connection, operation):
 def run(connection, script=None, report=None, screenshot=None, timeout=45):
     import pygame
     pygame.init()
-    screen = pygame.display.set_mode((1000, 680))
+    screen = pygame.display.set_mode((1000, 800))
     pygame.display.set_caption('Two Banners - ' + NAMES[connection.model.team] + ' network client')
     font = pygame.font.SysFont('consolas', 16)
     large = pygame.font.SysFont('consolas', 26, bold=True)
     clock = pygame.time.Clock()
     model = connection.model
-    selected = None
+    selected = next((unit['id'] for unit in model.packet['state']['units']
+                     if unit['team'] == model.team and not unit['dead']), None)
     item_index = 0
     error = None
     index = 0
@@ -195,6 +196,12 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 text(f"Attack targets: {len(unit['attacks'])}", 670, 410)
                 text('Click outlined Red to attack', 670, 434)
                 text('Moves commit immediately', 670, 458)
+                stats = list(unit['stats'].items())
+                for row in range(0, len(stats), 3):
+                    text('  '.join(f'{key}:{value}' for key, value in stats[row:row+3]), 670, 490 + row // 3 * 22)
+                text(f"Mana {unit['mana']}/{unit['max_mana']}", 670, 592)
+                weapons = ', '.join(f'{key}:{value}' for key, value in unit['wexp'].items() if float(value))
+                text('WEXP ' + weapons, 670, 616)
             mouse_x, mouse_y = pygame.mouse.get_pos()
             hover = ((mouse_x - LEFT) // TILE, (mouse_y - TOP) // TILE)
             tile_hint = f'Tile {hover}: ' if 0 <= hover[0] < state['width'] and 0 <= hover[1] < state['height'] else ''
@@ -203,8 +210,12 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 enabled = not error and (kind == 'sync' or model.can_act and (kind != 'wait' or unit and unit['team'] == model.team and not unit['finished']))
                 pygame.draw.rect(screen, (53, 76, 100) if enabled else (30, 35, 45), rect, border_radius=5)
                 text({'wait': 'Wait [W]', 'end_phase': 'End phase [E]', 'sync': 'Resync [R]'}[kind], rect.x + 12, rect.y + 8)
-            for i, line in enumerate(textwrap.wrap(model.message, 96)[:3]):
+            for i, line in enumerate(textwrap.wrap(model.message, 62)[:3]):
                 text(line, 32, 608 + i * 21, (242, 199, 119))
+            text('RECENT CHARACTER GROWTH', 32, 687, (143, 213, 239))
+            recent = ' | '.join(model.level_ups[-2:] + model.progression[-1:]) or 'Combat XP and level-ups appear here; select a unit to inspect stats.'
+            for i, line in enumerate(textwrap.wrap(recent, 96)[:4]):
+                text(line, 32, 714 + i * 19, (161, 230, 172))
             pygame.display.flip()
             if script is not None and index == len(script) and not model.pending:
                 if screenshot:

@@ -7,7 +7,12 @@ from app.coop.protocol import ProtocolError
 
 
 class Simulation:
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, scenario="training", growth_method=None):
+        if scenario not in ('training', 'progression'):
+            raise ValueError('Unknown trusted scenario')
+        if growth_method not in (None, 'Fixed', 'Random', 'Dynamic'):
+            raise ValueError('Unsupported growth method')
+        self.scenario = scenario
         os.environ['SDL_VIDEODRIVER'] = 'dummy'
         os.environ['SDL_AUDIODRIVER'] = 'dummy'
         from app.engine.codegen import source_generator
@@ -29,6 +34,10 @@ class Simulation:
         DB.load('default.ltproj', CURRENT_SERIALIZATION_VERSION)
         driver.start('Co-op authoritative host', from_editor=True)
         install_demo()
+        level_id = LEVEL
+        if scenario == 'progression':
+            from app.coop import progression_demo
+            level_id = progression_demo.install()
         # Preserve the same objectives/events, but keep the final board for
         # clients instead of entering local chapter/title/game-over presentation.
         for event in DB.events:
@@ -37,8 +46,13 @@ class Simulation:
             elif event.name.startswith('Shared defeat'):
                 event.source = 'level_var;coop_defeat;True'
         ItemObject.next_uid = SkillObject.next_uid = 100
-        self.game = game_state.start_level(LEVEL)
+        self.game = game_state.start_level(level_id)
         enable_local_control(self.game)
+        if scenario == 'progression':
+            self.game.current_mode.growths = growth_method or 'Fixed'
+            progression_demo.initialize(self.game)
+        elif growth_method:
+            self.game.current_mode.growths = growth_method
         self.units = list(self.game.units)
         self.surface = engine.create_surface((240, 160))
         self.fault = False
@@ -189,11 +203,13 @@ class Simulation:
                 'finished': bool(unit.finished), 'moved': bool(unit.has_moved),
                 'attacked': bool(unit.has_attacked), 'movement': int(unit.movement_left),
                 'level': unit.level, 'exp': unit.exp, 'stats': dict(unit.stats),
+                'wexp': {key: str(value) for key, value in unit.wexp.items()},
+                'mana': unit.get_mana(), 'max_mana': unit.get_max_mana(),
                 'inventory': [{'uid': i.uid, 'nid': i.nid, 'name': i.name,
                                'uses': i.data.get('uses')} for i in unit.items],
                 'moves': [list(p) for p in self.moves(unit)] if self.status == 'playing' else [],
                 'attacks': self.attacks(unit) if self.status == 'playing' else []})
-        return {'scenario': 'coop_training/v1', 'ruleset': self.ruleset,
+        return {'scenario': 'coop_' + self.scenario + '/v1', 'ruleset': self.ruleset,
                 'width': 15, 'height': 10,
                 'terrain': [[{'9': 'wall', '2': 'forest'}.get(terrain.get((x, y)), 'plain')
                              for x in range(15)] for y in range(10)],

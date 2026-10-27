@@ -5,6 +5,8 @@ import threading
 import time
 import uuid
 
+from app.coop.progression import progression_changes
+
 from app.coop.protocol import (MAX_FRAME, TEAMS, VERSION, ProtocolError, decode,
                                encode, fields, integer, require, string, validate_packet,
                                validate_request)
@@ -23,6 +25,8 @@ class Model:
         self.syncing = False
         self.message = 'Connecting'
         self.observed = []
+        self.progression = []
+        self.level_ups = []
 
     def apply(self, packet):
         require(type(packet) is dict and type(packet.get('v')) is int and packet['v'] == VERSION)
@@ -42,6 +46,10 @@ class Model:
                 if packet['revision'] == self.packet['revision']:
                     require(packet['digest'] == self.packet['digest'], 'conflicting_revision')
             advancing = self.packet is None or packet['revision'] > self.packet['revision']
+            if self.packet and advancing:
+                changes = progression_changes(self.packet['state'], packet['state'])
+                self.progression = (self.progression + changes)[-8:]
+                self.level_ups = (self.level_ups + [change for change in changes if 'LEVEL UP' in change])[-4:]
             self.packet = packet
             if advancing or self.syncing or (packet['result'] and packet['result']['id'] == self.pending):
                 self.pending = None

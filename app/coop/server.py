@@ -4,6 +4,8 @@ import hmac
 import logging
 import secrets
 
+from app.coop.progression import progression_changes
+
 from app.coop.protocol import (MAX_FRAME, TEAMS, VERSION, ProtocolError, decode,
                                digest, encode, validate_packet, validate_request)
 
@@ -81,7 +83,9 @@ class Session:
             if old['pos'] != new['pos'] or old['hp'] != new['hp'] or old['inventory'] != new['inventory']:
                 changes.append(f"{new['id']}: HP {old['hp']} -> {new['hp']}, position {old['pos']} -> {new['pos']}, "
                                f"uses {[i['uses'] for i in old['inventory']]} -> {[i['uses'] for i in new['inventory']]}")
-        summary = f"{team}: {request['action']}"
+        growth = progression_changes(before, after)
+        summary = '; '.join(growth) + '; ' if growth else ''
+        summary += f"{team}: {request['action']}"
         if request['action'] == 'end_phase':
             summary += f"; {before['phase']} -> {after['phase']}, turn {after['turn']}"
         if changes:

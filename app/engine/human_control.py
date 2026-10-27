@@ -1,4 +1,4 @@
-"""Opt-in local army ownership. No transport or presentation dependencies."""
+"""Opt-in human army ownership. No transport or presentation dependencies."""
 
 
 def human_teams():
@@ -7,6 +7,8 @@ def human_teams():
 
 
 def is_human_team(team):
+    # Membership is independent of the active phase: Red-phase defenders must
+    # retain their human progression policy. Selection has a separate predicate.
     return team in human_teams()
 
 

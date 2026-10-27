@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Set, TYPE_CHECKING
 from app.data.database.database import DB
 from app.data.database.difficulty_modes import GrowthOption
-from app.engine import item_funcs, skill_system
+from app.engine import human_control, item_funcs, skill_system
 from app.engine.game_state import game
 from app.events import triggers
 from app.utilities import utils, static_random
@@ -21,7 +21,7 @@ from app.utilities.typing import NID
 def get_leveling_method(unit, custom_method=None) -> str:
     if custom_method:
         method = custom_method.capitalize()
-    elif unit.team == 'player':
+    elif human_control.is_human_team(unit.team):
         method = game.current_mode.growths
     else:
         method = DB.constants.value('enemy_leveling')

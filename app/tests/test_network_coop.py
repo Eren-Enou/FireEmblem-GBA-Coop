@@ -175,7 +175,7 @@ class ContractAndModelTests(unittest.TestCase):
 
     def test_strict_commands_reject_spoofed_fields_bool_and_objects(self):
         base = command(self.packet, 'move', unit='Blue_Captain', pos=[3, 3])
-        for changes in ({'team': 'other'}, {'v': True}, {'v': 2}, {'revision': True},
+        for changes in ({'team': 'other'}, {'v': True}, {'v': VERSION + 1}, {'revision': True},
                         {'revision': -1}, {'pos': [True, 0]}, {'pos': [1.5, 0]},
                         {'pos': [0, 64]}, {'unit': {'nid': 'Blue_Captain'}}, {'action': '__reduce__'},
                         {'id': '../file'}, {'digest': 'not a hash'}):
@@ -216,12 +216,12 @@ class ContractAndModelTests(unittest.TestCase):
         self.assertTrue(model.can_act)
         request = model.command('wait', unit='Blue_Captain')
         self.assertFalse(model.can_act)
-        model.apply({'v': 1, 'type': 'reject', 'id': request['id'], 'code': 'state_mismatch', 'revision': 0})
+        model.apply({'v': VERSION, 'type': 'reject', 'id': request['id'], 'code': 'state_mismatch', 'revision': 0})
         self.assertTrue(model.syncing)
         self.assertFalse(model.can_act)
         model.apply(deepcopy(self.packet))
         self.assertTrue(model.can_act)
-        model.apply({'v': 1, 'type': 'peers', 'teams': ['player']})
+        model.apply({'v': VERSION, 'type': 'peers', 'teams': ['player']})
         self.assertFalse(model.can_act)
 
 
@@ -256,7 +256,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         reader, writer = await asyncio.open_connection('127.0.0.1', self.port)
         self.writers.append(writer)
         if team or token:
-            writer.write(encode({'v': 1, 'type': 'hello', 'token': token or self.session.tokens[team]}))
+            writer.write(encode({'v': VERSION, 'type': 'hello', 'token': token or self.session.tokens[team]}))
             await writer.drain()
         return reader, writer
 
@@ -307,7 +307,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         welcome = await self.receive(rejoined, 'welcome')
         self.assertEqual(welcome['team'], 'other')
         self.assertEqual(welcome['snapshot'], accepted)
-        rw.write(encode({'v': 1, 'type': 'sync'}))
+        rw.write(encode({'v': VERSION, 'type': 'sync'}))
         await rw.drain()
         self.assertEqual(await self.receive(rejoined, 'state'), accepted)
 
@@ -331,7 +331,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
             bw.write(encode(data))
             await bw.drain()
             self.assertEqual((await self.receive(blue, 'reject'))['code'], code)
-        bw.write(encode({'v': 1, 'type': 'sync'}))
+        bw.write(encode({'v': VERSION, 'type': 'sync'}))
         await bw.drain()
         self.assertEqual(await self.receive(blue, 'state'), accepted)
         self.assertEqual(self.session.revision, 1)

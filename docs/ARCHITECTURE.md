@@ -1,5 +1,39 @@
 # Architecture and original engine assessment
 
+## Phase 4A character progression
+
+Three small engine integration points extend the existing opt-in policy:
+`human_control.is_human_team` is explicitly phase-independent;
+`SimpleCombat.handle_exp/handle_mana` use membership for attacker/defender
+eligibility and the existing mana queue; `unit_funcs.get_leveling_method` selects
+the configured player growth method for either human army. Ordinary single-player
+still defaults to Blue only. Map/animation combat inherit these reward methods;
+no new formulas or leveling state are introduced. Unrelated inventory, animation
+camera, casualty, roster and campaign team checks remain outside this change.
+
+Existing item playback determines hit/miss/kill XP and skill multipliers;
+`exp_funcs`, `ExpState`, `GrowthPointChange`, `IncLevel`, `ApplyStatChanges` and
+`GainExp` retain thresholds, caps, events and stat application. Weapon XP already
+uses a team-neutral path and is unchanged. Difficulty growth bonuses already use
+allied teams. Red keeps enemy growth selection and no player combat XP. Both
+human defenders retain eligibility during Red's phase.
+
+Random/dynamic growth uses LT's local generator derived from unit ID, internal
+level and host seed; it need not consume the global growth stream. Different
+unit IDs can legitimately roll different gains. The host alone runs this code;
+clients only display validated snapshots. Protocol **v2** adds mana/max_mana and
+weapon-XP decimal strings (preserving fractional modifiers without allowing JSON
+float payloads). Existing level/XP/stats/HP/durability/RNG fields remain. Old v1
+clients are rejected, so update host and both clients together.
+
+`app/coop/progression.py` describes snapshot differences for host results and a
+bounded client growth panel; it never awards XP or rolls stats. The original
+`progression_demo.py` variant clones the in-memory training level, uses 95 starting
+captain XP, a 40-HP human class with inherited Fighter growths, and a distant third
+Red unit so the first AI round is inspectable. Training and project files remain
+unchanged. Launch and exact fixture limitations are in [PROGRESSION.md](PROGRESSION.md).
+This is live progression, not persistent characters or campaign saves.
+
 ## Phase 3A private-session playability
 
 `Host` retains one asyncio session lock from tactical validation through ordered

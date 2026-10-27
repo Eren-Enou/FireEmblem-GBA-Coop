@@ -22,7 +22,7 @@ async def host(args):
         client_context(tls)
     from app.coop.simulation import Simulation
     from app.coop.server import Host, Session
-    simulation = Simulation(seed=args.seed)
+    simulation = Simulation(seed=args.seed, scenario=args.scenario, growth_method=args.growth_method)
     try:
         session = Session(simulation)
         service = Host(session)
@@ -53,6 +53,9 @@ def main():
     server = modes.add_parser('host', help='Start the authoritative local simulation')
     server.add_argument('--port', type=int, default=38670)
     server.add_argument('--seed', type=int, default=0)
+    server.add_argument('--scenario', choices=('training', 'progression'), default='training')
+    server.add_argument('--growth-method', choices=('Fixed', 'Random', 'Dynamic'),
+                        help='Host-only player growth setting; progression drill defaults to Fixed')
     server.add_argument('--session-dir', default='artifacts/network')
     server.add_argument('--bind', default='127.0.0.1', help='Literal local IP; non-loopback requires TLS')
     server.add_argument('--advertise-host', help='Address clients can reach; required for wildcard binds')

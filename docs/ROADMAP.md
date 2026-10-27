@@ -32,7 +32,8 @@
 - [ ] Two-person exploratory playtest of the small scenario.
 
 The implemented experiment meets the local control goal. It is not full gameplay
-parity: Green XP/leveling, roster menus, supports and campaign saves are deferred.
+parity: roster menus, supports and campaign saves remain deferred; Phase 4A
+subsequently implements core Green combat XP/level/growth parity.
 
 ## Phase 2: local network vertical slice (implemented and automated)
 
@@ -77,20 +78,32 @@ durable saves, verified WAN play and full tactical/campaign parity remain open.
 - [ ] Representative WAN latency/jitter, half-open connections and reconnect storms.
 - [ ] Public-host/relay connectivity design and operational/security review before exposure.
 
-## Phase 4: tactical/campaign parity (not started)
+## Phase 4A: core progression (implemented and locally verified)
+
+- [x] Human-army attacker/defender XP eligibility, including Red-phase counters.
+- [x] Configured player fixed/random/dynamic growth methods and real LT level-ups.
+- [x] Existing miss/kill/modifier/threshold/stat-cap/level-cap rules and weapon XP.
+- [x] Mana queue parity with existing skill/resource caps where applicable.
+- [x] Host-only progression, full client convergence, duplicate/resync/rejoin checks.
+- [x] Protocol v2 fractional weapon XP/mana and visible stats/XP/level-up panel.
+- [x] Separate reproducible progression drill, three-process rendering and TLS smoke.
+- [ ] Two-human exploratory progression playtest; actual two-PC WAN remains unverified.
+
+## Remaining Phase 4 tactical/campaign parity (not implemented)
 
 Implementation methods are now documented in
 [CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md), backed by a reproducible readiness
 audit. These design tasks are complete; the mechanics/checkpoint gates below are not.
 
 - Independent persistent rosters, equipment and inventory management.
-- Green experience/leveling, recruitment and ownership changes.
+- Recruitment, promotions and persistent ownership changes; core Green combat XP/growth is complete.
 - Healing, supports, trade, paired interactions and permadeath audits.
 - Shared campaign saves with an explicit phase/event/RNG schema.
 - Chapter-boundary DTO first, then supported mid-map quiescent checkpoints;
   validated restore, atomic generation commit, corruption recovery and migrations.
-- Explicit host-owned army identities/two persistent parties; isogenic XP/growth
-  parity first, then network Equip/Use/Heal/Trade/Recruit/Promote/deployment slices.
+- Explicit host-owned army identities/two persistent parties, followed by
+  network Equip/Use/Heal/Trade/Recruit/Promote/deployment slices. Core combat
+  XP/growth parity is implemented by Phase 4A.
 
 ## Phase 5: campaign integration (not started)
 

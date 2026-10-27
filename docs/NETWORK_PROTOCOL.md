@@ -1,4 +1,4 @@
-# Tactical contract - version 1 with Phase 3A liveness controls
+# Tactical contract - version 2 with cooperative progression
 
 This is a **live training-map session**, not a campaign-save format or a verified
 Internet service. It supports loopback plaintext or optional verified TLS with
@@ -17,8 +17,9 @@ receive video frames or remote keyboard events. Presentation and network code
 are separate from the LT adapter in `app/coop/simulation.py`.
 
 The host installs the existing original training map in memory, using the same
-engine systems and ownership policy as the hot-seat prototype. There are no new
-edits to upstream engine modules in this milestone. Host-only presentation runs
+engine systems and ownership policy as the hot-seat prototype. Phase 4A engine
+edits are limited to human XP/mana eligibility and player growth selection as
+documented in [PROGRESSION.md](PROGRESSION.md). Host-only presentation runs
 offscreen while resolving states. Phase/preload saves are disabled, and normal
 title/chapter transitions are not entered.
 Shared victory/defeat event conditions remain the same; their terminal scripts
@@ -51,7 +52,7 @@ game-over screens. All further tactical commands then reject as session finished
   TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
   hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
-All messages have integer `v: 1` and a string `type`. Initial responses:
+All messages have integer `v: 2` and a string `type`. Initial responses:
 
 | Message | Other fields | Meaning |
 | --- | --- | --- |
@@ -68,7 +69,7 @@ A `command` requires these exact common fields:
 
 | Field | Type / constraint |
 | --- | --- |
-| `v`, `type` | Integer 1, string `command` |
+| `v`, `type` | Integer 2, string `command` |
 | `session` | Current host-generated session ID from the state packet |
 | `id` | 1–64 ASCII letters, digits, `_` or `-`; unique per army for this host session |
 | `revision` | Nonnegative integer copied from the current authoritative packet |
@@ -85,7 +86,7 @@ A `command` requires these exact common fields:
 
 The host independently computes legality; client movement/attack hints are not
 trusted. Payloads cannot supply damage, HP, a path, random rolls, ownership or an
-event script. Movement is committed immediately, once per unit phase; v1 has no
+event script. Movement is committed immediately, once per unit phase; v2 has no
 move-preview cancellation, canto commands, abilities, trading or arbitrary items.
 
 Before applying a command the host also checks both seats, session, request ID,
@@ -116,7 +117,7 @@ Both clients receive the exact same `state` packet:
 
 | Field | Contents |
 | --- | --- |
-| `v`, `type` | Integer 1, string `state` |
+| `v`, `type` | Integer 2, string `state` |
 | `session`, `revision` | Session ID and monotonically increasing accepted-command revision |
 | `digest` | SHA-256 of canonical `state` JSON only: sorted dictionary keys, compact separators, UTF-8, no non-finite values |
 | `state` | Schema-validated training-map projection described below |
@@ -126,15 +127,31 @@ The projection contains `scenario: coop_training/v1`, a ruleset fingerprint,
 map width/height/terrain, objective text, phase, turn, status, combat/growth/other
 RNG state plus seed, and a stable ID-sorted unit list. Each unit includes ID/name,
 team, position or null, current/max HP, dead/finished/moved/attacked flags,
-movement remaining, level/XP, stats, inventory UIDs/names/durability, and advisory
+movement remaining, level/XP, stats, weapon XP, mana/max mana, inventory UIDs/names/durability, and advisory
 legal move/attack choices. The fingerprint hashes authoritative engine/co-op
 Python files and the installed default project's JSON database. Clients need no
 matching local engine/assets because they only present state; both must see the
 same session and fingerprint. Digests check this **projection**, not every LT
 internal registry, skill, party, event stack or campaign-save field.
 
+Version 2 unit additions are `mana` and `max_mana` (integers 0-10000,
+current <= maximum), plus `wexp` (at most 64 weapon IDs mapped to nonnegative,
+finite decimal strings <= 10000, at most 64 characters each). For example,
+`"Axe":"32.5"` preserves fractional engine modifiers without admitting JSON float
+payloads. These are read-only projections. Clients cannot submit XP, levels,
+stats, mana or weapon-XP changes; unknown command fields reject. v1 handshakes and
+packets reject rather than silently losing progression data. Use matching v2
+host/clients. Scenario IDs remain `coop_training/v1` or `coop_progression/v1`;
+scenario version and wire version are separate.
+
+Authoritative result summaries place XP changes, level-ups and stat gains before
+ordinary combat details. The client computes presentation-only differences for
+a bounded growth history. Resync/rejoin only restores state, never runs rewards.
+Random/dynamic level-up rolls derive from stable unit ID, internal level and host
+seed; unchanged global growth-stream state does not mean a level-up was skipped.
+
 Snapshots go out only at discrete command boundaries and on explicit resync or
-join. There is no frame-by-frame screen/state replication. In v1, Green's End
+join. There is no frame-by-frame screen/state replication. Green's End
 includes all Red AI actions in one revision; clients see the resulting board and
 authoritative outcome summary, not Red's intermediate animations.
 
@@ -162,13 +179,13 @@ Restart and inspect the host log; persistent crash recovery is future work.
 
 ## Liveness and bounded private-session service (Phase 3A)
 
-Use the same current client/host commit. Tactical v1 packet fields are unchanged;
-this control-message extension requires a client that understands `ping`. Older
+Use the same current client/host commit. Version 2 adds weapon XP and mana fields to every unit;
+clients must understand both those fields and the existing ping/pong controls. Older
 clients must update rather than silently disabling liveness checks.
 
-- After welcome, the host sends `{v:1,type:"ping",nonce:N}` every five seconds
+- After welcome, the host sends `{v:2,type:"ping",nonce:N}` every five seconds
   when no challenge is outstanding. The client reader answers
-  `{v:1,type:"pong",nonce:N}` immediately, independently of pygame polling.
+  `{v:2,type:"pong",nonce:N}` immediately, independently of pygame polling.
   Host nonces start at one and increase per connection. Only the outstanding
   nonce is accepted. Unknown fields, booleans and unsolicited/replayed pong close
   the connection. Ordinary messages cannot substitute for the challenge response.
@@ -202,7 +219,8 @@ clients must update rather than silently disabling liveness checks.
   Connection failure clears command readiness and leaves the last board visible.
 
 This contract is deliberately limited to the test map. Persistent campaigns,
-deployment, recruitment, promotions, allied trades/healing, full Green leveling
-parity and verified Internet play remain later milestones. Version the contract explicitly
+deployment, recruitment, promotions, allied trades/healing, persistent rosters, advanced tactical
+parity and verified Internet play remain later milestones. Core Green combat
+XP/level/growth parity is implemented as described in [PROGRESSION.md](PROGRESSION.md). Version the contract explicitly
 when expanding these fields/actions; do not treat this projection as a safe
 replacement for complete engine save/load.

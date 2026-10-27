@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def run_smoke(output, tls=False):
+def run_smoke(output, tls=False, progression=False):
     folder = Path(output).resolve() / ('run-' + uuid.uuid4().hex[:8])
     folder.mkdir(parents=True)
     blue = [{'action': 'advance', 'unit': 'Blue_Captain'},
@@ -24,6 +24,15 @@ def run_smoke(output, tls=False):
              {'action': 'attack_nearest', 'unit': 'Green_Captain'},
              {'action': 'wait', 'unit': 'Green_Guard'}, {'action': 'end_phase'},
              {'action': 'wait_for', 'phase': 'other', 'turn': 2}]
+    if progression:
+        blue = [{'action': 'attack', 'unit': 'Blue_Captain', 'item': 100, 'target': 'Red_1'},
+                {'action': 'wait', 'unit': 'Blue_Guard'}, {'action': 'end_phase'},
+                {'action': 'wait_for', 'phase': 'player', 'turn': 2},
+                {'action': 'end_phase'}, {'action': 'wait_for', 'phase': 'other', 'turn': 2}]
+        green = [{'action': 'wait_for', 'phase': 'other', 'turn': 1},
+                 {'action': 'attack', 'unit': 'Green_Captain', 'item': 102, 'target': 'Red_2'},
+                 {'action': 'wait', 'unit': 'Green_Guard'}, {'action': 'end_phase'},
+                 {'action': 'wait_for', 'phase': 'other', 'turn': 2}]
     processes, logs = [], []
 
     def launch(name, *args):
@@ -41,6 +50,8 @@ def run_smoke(output, tls=False):
             from utilities.create_tls_identity import create_identity
             certificate, key = create_identity(folder / 'tls')
             options = ['--tls-cert', str(certificate), '--tls-key', str(key), '--server-name', 'localhost']
+        if progression:
+            options += ['--scenario', 'progression']
         host = launch('host', 'host', '--port', '0', '--session-dir', str(folder / 'credentials'), *options)
         deadline = time.monotonic() + 30
         while not all((folder / 'credentials' / (name + '.json')).exists() for name in ('blue', 'green')):
@@ -74,7 +85,8 @@ def run_smoke(output, tls=False):
         final = reports[0]['final']
         assert final['state']['turn'] == 2 and final['state']['phase'] == 'other'
         for team in ('player', 'other'):
-            assert any(p['result'] and p['result']['team'] == team and p['result']['action'] == 'move' for p in packets)
+            if not progression:
+                assert any(p['result'] and p['result']['team'] == team and p['result']['action'] == 'move' for p in packets)
             combats = [i for i, p in enumerate(packets) if p['result'] and
                        p['result']['team'] == team and p['result']['action'] == 'attack']
             assert combats, 'No real combat for ' + team
@@ -86,9 +98,17 @@ def run_smoke(output, tls=False):
                         p['result']['team'] == 'other' and p['result']['action'] == 'end_phase')
         assert any(a != b for a, b in zip(packets[ai_index-1]['state']['units'],
                                         packets[ai_index]['state']['units']) if a['team'] == 'enemy')
+        if progression:
+            for nid in ('Blue_Captain', 'Green_Captain'):
+                old = next(u for u in packets[0]['state']['units'] if u['id'] == nid)
+                grown = next(u for u in final['state']['units'] if u['id'] == nid)
+                assert not grown['dead']
+                assert grown['level'] == 2 and grown['stats']['STR'] > old['stats']['STR']
+                assert grown['max_hp'] > old['max_hp']
+                assert any(p['result'] and nid + ': XP' in p['result']['summary'] and 'LEVEL UP' in p['result']['summary'] for p in packets)
         summary = {'host_pid': host.pid, 'client_pids': [r['pid'] for r in reports],
                    'revision': final['revision'], 'digest': final['digest'],
-                   'snapshots_compared': len(packets), 'tls': tls, 'folder': str(folder)}
+                   'snapshots_compared': len(packets), 'tls': tls, 'progression': progression, 'folder': str(folder)}
         (folder / 'result.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
         return summary
     finally:
@@ -115,5 +135,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', default=str(ROOT / 'artifacts/network-smoke'))
     parser.add_argument('--tls', action='store_true', help='Use generated identity and verified TLS clients')
+    parser.add_argument('--progression', action='store_true', help='Verify both armies leveling in the separate growth drill')
     args = parser.parse_args()
-    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls)))
+    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.progression)))

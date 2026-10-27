@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from app.data.database.database import DB
-from app.engine import (action, banner, engine, exp_funcs, item_system, skill_system,
+from app.engine import (action, banner, engine, exp_funcs, human_control, item_system, skill_system,
                         supports)
 from app.engine.combat.playback import PlaybackBrush
 from app.engine.combat.solver import CombatPhaseSolver
@@ -535,7 +535,7 @@ class SimpleCombat():
                 total_mana += skill_system.mana(self.full_playback, self.attacker, self.main_item, unit)
         # This is being left open - if something effects mana gain it will be done here
         if total_mana:
-            if self.attacker.team == 'player':
+            if human_control.is_human_team(self.attacker.team):
                 game.mana_instance.append((self.attacker, total_mana))
             else:
                 action.do(action.ChangeMana(self.attacker, total_mana))
@@ -545,14 +545,14 @@ class SimpleCombat():
             # This is being left open - if something effects mana gain it will be done here
             mana_gain = skill_system.mana(self.full_playback, self.defender, self.def_item, self.attacker)
             if mana_gain:
-                if self.defender.team == 'player':
+                if human_control.is_human_team(self.defender.team):
                     game.mana_instance.append((self.defender, mana_gain))
                 else:
                     action.do(action.ChangeMana(self.defender, mana_gain))
 
     def handle_exp(self, combat_object=None):
         # handle exp
-        if self.attacker.team == 'player' and not self.attacker.is_dying:
+        if human_control.is_human_team(self.attacker.team) and not self.attacker.is_dying:
             exp = self.calculate_exp(self.attacker, self.main_item)
             exp = int(utils.clamp(exp, -100, 100))
 
@@ -568,7 +568,7 @@ class SimpleCombat():
             elif not self.alerts and exp != 0 and exp_funcs.can_give_exp(self.attacker, exp):
                 action.do(action.GainExp(self.attacker, exp))
 
-        elif self.defender and self.defender.team == 'player' and not self.defender.is_dying:
+        elif self.defender and human_control.is_human_team(self.defender.team) and not self.defender.is_dying:
             exp = self.calculate_exp(self.defender, self.def_item)
             exp = int(utils.clamp(exp, 0, 100))
 

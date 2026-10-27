@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from app.coop.client import Connection
-from app.coop.protocol import decode, encode
+from app.coop.protocol import VERSION, decode, encode
 from app.tests import test_network_coop as baseline
 
 
@@ -123,7 +123,7 @@ class PlayabilityTests(unittest.IsolatedAsyncioTestCase):
         extra, _ = await self.open()
         self.assertEqual((await self.receive(extra, 'error'))['code'], 'admission_limit')
         # Flood a valid seat with bounded frames; it must be removed, never mutate LT.
-        green.socket.sendall(encode({'v': 1, 'type': 'sync'}) * 40)
+        green.socket.sendall(encode({'v': VERSION, 'type': 'sync'}) * 40)
         await self.until((blue,), lambda: 'other' not in self.host.peers)
         self.assertEqual(before, self.session.packet)
         self.assertFalse(blue.model.can_act)
@@ -132,7 +132,7 @@ class PlayabilityTests(unittest.IsolatedAsyncioTestCase):
         self.host.heartbeat_interval = 0.02
         blue, green = await self.clients()
         await self.until((blue, green), lambda: blue.model.can_act)
-        green.send({'v': 1, 'type': 'pong', 'nonce': True})
+        green.send({'v': VERSION, 'type': 'pong', 'nonce': True})
         await self.until((blue,), lambda: 'other' not in self.host.peers)
         self.assertEqual(self.session.revision, 0)
 
@@ -141,7 +141,7 @@ class PlayabilityTests(unittest.IsolatedAsyncioTestCase):
         await self.receive(reader, 'welcome')
         before = deepcopy(self.session.packet)
         for _ in range(100):
-            writer.write(encode({'v': 1, 'type': 'sync'}))
+            writer.write(encode({'v': VERSION, 'type': 'sync'}))
             await writer.drain()
             packet = decode(await asyncio.wait_for(reader.readline(), 3))
             if packet['type'] == 'peers':

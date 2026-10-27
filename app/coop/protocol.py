@@ -1,9 +1,10 @@
-"""Version 1, bounded JSON only. No engine imports or executable serialization."""
+"""Version 2, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
+import math
 import re
 
-VERSION = 1
+VERSION = 2
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -127,7 +128,7 @@ def validate_state(value):
     ids, item_ids, occupied = set(), set(), set()
     for unit in value['units']:
         fields(unit, ('id', 'name', 'team', 'pos', 'hp', 'max_hp', 'dead', 'finished',
-                      'moved', 'attacked', 'movement', 'level', 'exp', 'stats',
+                      'moved', 'attacked', 'movement', 'level', 'exp', 'stats', 'wexp', 'mana', 'max_mana',
                       'inventory', 'moves', 'attacks'))
         string(unit['id'])
         string(unit['name'])
@@ -142,6 +143,15 @@ def validate_state(value):
         for key in ('hp', 'max_hp', 'movement', 'level', 'exp'):
             integer(unit[key], 0, 10000)
         require(unit['hp'] <= unit['max_hp'])
+        integer(unit['mana'], 0, 10000)
+        integer(unit['max_mana'], 0, 10000)
+        require(unit['mana'] <= unit['max_mana'])
+        require(type(unit['wexp']) is dict and len(unit['wexp']) <= 64)
+        for weapon, amount in unit['wexp'].items():
+            string(weapon)
+            string(amount, 64)
+            require(re.fullmatch(r'[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]{1,3})?', amount) is not None)
+            require(math.isfinite(float(amount)) and 0 <= float(amount) <= 10000)
         for key in ('dead', 'finished', 'moved', 'attacked'):
             require(type(unit[key]) is bool)
         require(type(unit['stats']) is dict and len(unit['stats']) <= 64)

@@ -1,6 +1,92 @@
 # Progress - October 27, 2026
 
-## Current milestone: Phase 3A online multiplayer playability
+## Current milestone: Phase 4A cooperative character progression
+
+### Implemented and verified
+
+- Reproduced the original audit **before modification**: equal seed-0 combat
+  awarded Blue 10 XP and Green 0, with equal 10 HP damage/counterdamage and one
+  axe use. After the engine fix, the same unchanged audit awards **10 XP to both**.
+- `SimpleCombat.handle_exp/handle_mana` now use phase-independent human membership
+  for attacker/defender rewards and the player mana queue. `unit_funcs` selects
+  configured player growth for both armies. `human_control` documents the policy.
+  Without the opt-in flag Blue remains the sole player; Red retains enemy policy.
+- Kept existing hit/miss/kill/modifier formulas, weapon-XP awards, `exp_funcs`,
+  ExpState, thresholds/caps, growth generators, stat actions and events. No new
+  XP or leveling solver and no broad replacement of unrelated team checks.
+- Real combat verifies fixed/random/dynamic levels, exact/below/above threshold,
+  repeated level-ups, class/stat caps, Red-phase defense and counter-kills,
+  unchanged unarmed/miss rules, fractional weapon XP and capped skill-driven mana.
+  A subsequent real attack deals **11 instead of 10 damage** after Strength grows.
+- Protocol **v2** adds mana/max mana and lossless decimal-string weapon XP to
+  existing progression/state fields. Old v1 peers reject. All reward/state
+  mutation remains on the authoritative host; forged reward fields reject.
+  Full socket packet equality, no duplicate rewards on resync, same-army rejoin
+  after level-up and normal Red AI are verified.
+- Host results identify XP, LEVEL UP and stat gains first. The pygame client
+  shows selected-unit stats, mana/weapon XP and bounded persistent growth notices.
+  Initial selection and column layout make those values directly inspectable.
+- Added a separate original `progression_demo.py` drill: 95 starting captain XP,
+  a declared 40-HP human class inheriting Fighter growths, and a distant Red 3.
+  Both captains reach level 2/5 XP/max HP 41/STR 8 through actual combat. Original
+  training and shipped projects are unchanged. Run instructions and fixture
+  choices are in [PROGRESSION.md](PROGRESSION.md).
+
+### Executed tests and render evidence
+
+- Combined suite: **143 passed in 140.583 seconds** = 112 previous selected checks
+  (including Phase 3A and TLS), 16 new progression tests and 15 existing classic-XP,
+  empty-level reroll and level-up timing tests. Full repository suite not run.
+- Post-layout recheck: **2 graphical process tests passed in 8.861 seconds**,
+  covering normal training and the progression drill after initial-selection/
+  text-column changes. Earlier focused progression run: 14 passed in 43.314
+  seconds; its added integration checks were included in the final combined run.
+- Final explicit TLS growth smoke: host PID **158968**, clients **149844/167652**,
+  **8 identical snapshots, revision 7**, Green turn 2. Both captains levelled,
+  remained inspectable after Red AI and had increased HP/Strength. Green PNG
+  visually inspected: TLSv1.3, level/XP/stats/mana/weapon XP, action hints and both
+  level-up notifications render without column overlap. Reports/PNGs/invitations
+  remain ignored at `artifacts/network-smoke/run-536fec41/`.
+- Existing Phase 3A complete outcomes still pass: seed-1 victory revision 20/turn
+  3 and defeat revision 6/turn 4, with identical states after accepted actions.
+
+- Publication audit passed: **25 text files**, 15 Python syntax checks and 65
+  resolving local document links. Only the three documented engine files change;
+  normal training, shipped resources, dependencies, original license/credits and
+  third-party notices are unchanged. No matching credential signatures, media,
+  environments or tracked local outputs are staged. This scoped audit does not
+  establish historical asset rights or a full secret/security review.
+
+### Failures investigated and resolved
+
+- First v2 schema check failed before running tests because a new weapon-XP loop
+  shadowed the state parameter; renamed its local value. The six contract tests
+  then passed; final regressions cover malformed progression projections.
+- An early network follow-up assertion found the forward captain killed by Red
+  AI. The separate drill now declares its survivable human HP/Red placement;
+  canonical training was not changed and all normal victory/defeat tests remain.
+- A follow-up attack test assumed every miss consumes a weapon use. This engine
+  can preserve uses on a miss. The network check now respects that rule and
+  verifies RNG/turn completion; a separate real scripted-hit test proves the
+  increased Strength changes actual damage. No combat mechanic was altered to
+  satisfy the assertion.
+
+### Limits and next steps
+
+Core live combat progression is complete; broader campaign parity is not.
+No persistent rosters/checkpoints, recruitment, promotions, trading/convoy,
+complex supports or new animations were implemented. Growth choice parity is
+verified for Fixed/Random/Dynamic, not every custom growth mode/skill/event.
+Random/dynamic unit-ID-derived rolls remain host-only and may differ between
+characters; they need not advance the global growth stream. Custom prompts
+still require future explicit network decisions. Asset rights remain unaudited.
+
+Next: two-human inspection of the growth drill and the still-unverified private
+two-PC Internet acceptance gate. Then persistence and additional tactical slices
+under [CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md). Host restart still loses
+the live battle. No firewall/router/service/account changes occurred.
+
+## Previous milestone: Phase 3A online multiplayer playability
 
 ### Implemented
 
