@@ -30,6 +30,17 @@ class Session:
         raise ProtocolError('authentication_failed')
 
     def command(self, team, request, connected):
+        for _ in self.command_steps(team, request, connected):
+            pass
+        return self.packet
+
+    async def command_async(self, team, request, connected):
+        # One thread and one lock; only network work runs between engine steps.
+        for _ in self.command_steps(team, request, connected, cooperative=True):
+            await asyncio.sleep(0)
+        return self.packet
+
+    def command_steps(self, team, request, connected, cooperative=False):
         validate_request(request)
         if request['type'] != 'command':
             raise ProtocolError('expected_command')
@@ -52,7 +63,10 @@ class Session:
             raise ProtocolError('stale_phase')
         before = self.packet['state']
         try:
-            self.simulation.execute(team, request)
+            if cooperative:
+                yield from self.simulation.execute_steps(team, request)
+            else:
+                self.simulation.execute(team, request)
         except ProtocolError:
             raise
         except Exception:
@@ -72,6 +86,12 @@ class Session:
             summary += f"; {before['phase']} -> {after['phase']}, turn {after['turn']}"
         if changes:
             summary += '; ' + '; '.join(changes)
+        if after['status'] in ('victory', 'defeat'):
+            summary += '; SHARED ' + after['status'].upper()
+        deaths = [u['id'] for u in after['units'] if u['dead'] and not next(
+            old for old in before['units'] if old['id'] == u['id'])['dead']]
+        if deaths:
+            summary += '; Fallen: ' + ', '.join(deaths)
         if self.simulation.fault:
             summary = 'Host resolution fault; session frozen. Restart the host after inspecting its log.'
         result = {'id': request['id'], 'team': team, 'action': request['action'], 'summary': summary[:4096]}
@@ -80,10 +100,15 @@ class Session:
 
 
 class Host:
-    def __init__(self, session):
+    def __init__(self, session, heartbeat_interval=5, heartbeat_timeout=20):
         self.session = session
         self.peers = {}
         self.lock = asyncio.Lock()
+        self.heartbeat_interval = heartbeat_interval
+        self.heartbeat_timeout = heartbeat_timeout
+        self.connections = set()
+        self.admission_credit = 16.0
+        self.admission_time = 0.0
 
     async def send(self, writer, packet):
         writer.write(encode(packet))
@@ -112,7 +137,18 @@ class Host:
 
     async def handle(self, reader, writer):
         team = None
+        tasks = []
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+        self.admission_credit = min(16, self.admission_credit + (now - self.admission_time) * 2)
+        self.admission_time = now
+        admitted = len(self.connections) < 8 and self.admission_credit >= 1
+        if admitted:
+            self.admission_credit -= 1
+            self.connections.add(writer)
         try:
+            if not admitted:
+                raise ProtocolError('admission_limit')
             hello = await asyncio.wait_for(self.read(reader), 5)
             if hello is None or hello['type'] != 'hello':
                 raise ProtocolError('expected_hello')
@@ -124,17 +160,76 @@ class Host:
                 await self.send(writer, {'v': VERSION, 'type': 'welcome', 'team': team,
                                          'snapshot': self.session.packet})
                 await self.peer_status()
-            while True:
-                request = await self.read(reader)
-                if request is None:
-                    break
+            requests = asyncio.Queue(maxsize=4)
+            heartbeat = {'nonce': 0, 'waiting': None, 'sent': 0}
+
+            async def monitor():
+                while True:
+                    await asyncio.sleep(self.heartbeat_interval)
+                    if heartbeat['waiting'] is not None:
+                        if loop.time() - heartbeat['sent'] >= self.heartbeat_timeout:
+                            raise ProtocolError('heartbeat_timeout')
+                    else:
+                        heartbeat['nonce'] += 1
+                        heartbeat['waiting'] = heartbeat['nonce']
+                        heartbeat['sent'] = loop.time()
+                        await self.send(writer, {'v': VERSION, 'type': 'ping',
+                                                 'nonce': heartbeat['nonce']})
+
+            async def receive():
+                credit, last = 30.0, loop.time()
+                while True:
+                    request = await self.read(reader)
+                    if request is None:
+                        raise ConnectionError('peer_closed')
+                    now = loop.time()
+                    credit = min(30, credit + (now - last) * 10)
+                    last = now
+                    if credit < 1:
+                        raise ProtocolError('rate_limit')
+                    credit -= 1
+                    if request['type'] == 'pong':
+                        if request['nonce'] != heartbeat['waiting']:
+                            raise ProtocolError('unexpected_pong')
+                        heartbeat['waiting'] = None
+                        continue
+                    if requests.full():
+                        raise ProtocolError('request_queue_full')
+                    requests.put_nowait(request)
+
+            async def supervise(coroutine):
+                try:
+                    await coroutine
+                except (OSError, ValueError, asyncio.TimeoutError) as exc:
+                    # Close immediately so an in-flight command may finish but
+                    # cannot be followed by another command from either player.
+                    if isinstance(exc, (ProtocolError, asyncio.TimeoutError)):
+                        try:
+                            # Queue one bounded final error, then close without
+                            # yielding: a slow reader must not delay the pause.
+                            writer.write(encode({'v': VERSION, 'type': 'error',
+                                                 'code': str(exc) or 'timeout'}))
+                        except OSError:
+                            pass
+                    writer.close()
+                    if not requests.full():
+                        requests.put_nowait(exc)
+
+            tasks = [asyncio.create_task(supervise(receive())),
+                     asyncio.create_task(supervise(monitor()))]
+            while not writer.is_closing():
+                request = await requests.get()
+                if isinstance(request, Exception):
+                    raise request
                 async with self.lock:
+                    if writer.is_closing():
+                        break
                     if request['type'] == 'sync':
                         await self.send(writer, self.session.packet)
                         continue
                     try:
                         connected = [t for t, w in self.peers.items() if not w.is_closing()]
-                        packet = self.session.command(team, request, connected)
+                        packet = await self.session.command_async(team, request, connected)
                     except ProtocolError as exc:
                         await self.send(writer, {'v': VERSION, 'type': 'reject',
                                                  'id': request.get('id', ''), 'code': str(exc),
@@ -149,14 +244,20 @@ class Host:
         except (OSError, ConnectionError):
             pass
         finally:
-            async with self.lock:
-                if team and self.peers.get(team) is writer:
-                    del self.peers[team]
-                    await self.peer_status()
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            if team and self.peers.get(team) is writer:
+                async with self.lock:
+                    if self.peers.get(team) is writer:
+                        del self.peers[team]
+                        await self.peer_status()
+            self.connections.discard(writer)
             writer.close()
             try:
-                await writer.wait_closed()
-            except OSError:
+                await asyncio.wait_for(writer.wait_closed(), 5)
+            except (OSError, asyncio.TimeoutError):
                 pass
 
     async def listen(self, port=38670, bind='127.0.0.1', tls_context=None):

@@ -1,6 +1,101 @@
-# Progress — October 27, 2026
+# Progress - October 27, 2026
 
-## Current milestone: Internet path, campaign-save and parity methods
+## Current milestone: Phase 3A online multiplayer playability
+
+### Implemented
+
+- Preserved verified TLS-before-token authentication and separate army seats.
+  Added five-second host challenges, 20-second unanswered-challenge expiry,
+  35-second client host-silence detection, and a 120-second pending-result
+  deadline. Failed connections pause new gameplay without discarding live state.
+  Correct credentials manually rejoin the same army at the latest boundary;
+  uncertain commands are never automatically replayed.
+- Per-peer readers detect EOF and answer/validate heartbeat traffic independently
+  of tactical processing. LT now yields between engine steps on the **same
+  event-loop thread**, keeping the session lock held through validation,
+  resolution and publication. No engine threads, parallel mutations or new solver.
+- Proportionate private-session safeguards: eight admitted application sockets,
+  global admission burst 16/replenishment two per second, authenticated frame
+  burst 30/replenishment ten per second, four queued requests per peer. Existing
+  strict frame/schema/authentication and request-ID bounds remain intact.
+- Pygame client now outlines legal attack targets, shows movement/tile/action
+  information, distinguishes usable buttons, preserves useful disconnection and
+  unknown-outcome messages, and identifies shared outcomes/deaths in host results.
+  Windows UI close no longer waits on the network reader's buffered-stream lock.
+  Ownership, active phase/turn, peers, HP, durability, pending/rejected state,
+  revision and Check remain visible through the existing interface.
+- Added `app/tests/test_network_playability.py`; extended only `app/coop/` and
+  project records. Upstream engine source, licenses, sample assets, dependencies,
+  single-player and hot-seat launchers were not changed by this milestone.
+
+### Executed verification
+
+- New suite: **9 passed in 22.182 seconds**. Covers real client heartbeat responses,
+  silent peer expiry and rejoin, silent host detection without EOF, disconnect
+  during held real LT resolution, post-TLS admission cap, bounded queue flood,
+  sequential frame-rate rejection, malformed pong, controlled shutdown and
+  pending-deadline no-replay behavior. Final combined run also asserts that
+  deadline-driven UI close returns within one second instead of blocking 35.
+- Real untouched seed-1 scenario driven through actual client/model sockets:
+  **victory at revision 20, turn 3**; passive defeat at **revision 6, turn 4**.
+  Both complete battles compare the entire authoritative packet on both clients
+  after every accepted action. Movement, attack, wait, end-phase, repeated Red AI,
+  HP, inventory/durability, death and shared terminal freeze use real LT. Commands
+  after completion reject without changing state. No test kills units directly
+  or modifies combat stats/objectives to manufacture these network outcomes.
+- Full selected regression command in [TESTING.md](TESTING.md): **112 passed in
+  79.877 seconds** (9 new + 8 TLS + 22 prior network + 73 selected hot-seat/AI/
+  movement/canto/save tests). No full repository-suite claim. Final test-harness
+  cleanup guard recheck: one test passed in 2.444 seconds.
+- Explicit three-process TLS graphical smoke passed separately: host PID 96800,
+  client PIDs 153284/151988, 10 equal snapshots through revision 9. Evidence is
+  ignored under `artifacts/network-smoke/run-9809505c/`. Green PNG inspected;
+  negotiated TLSv1.3, phase/turn/revision/board and connection controls rendered.
+  Process automation exercises the command/model and rendering, not mouse input.
+
+- Publication audit passed for 14 Python/Markdown files: six Python syntax
+  checks, 51 resolving local document links, clean staged whitespace, no matching
+  credential signatures/new media/tracked local outputs, and unchanged engine,
+  license/credits/resources/dependencies. The inherited README license link was
+  corrected to the existing LICENSE.txt and asset-policy distinction preserved.
+  This is a scoped staged audit, not a historical secret or asset-rights audit.
+
+### Failures investigated and resolved
+
+- Initial admission-test teardown waited for listener shutdown before closing
+  live real-client connections. On Windows/Python 3.12 that wait did not finish;
+  the harness now closes its owned accepted sockets and bounds writer shutdown
+  before awaiting listener closure. Interrupted diagnostic runs were not passes.
+- A pending-result test exposed an actual 35-second client-close stall on the
+  buffered-reader lock. Cleanup now belongs to the reader; UI socket shutdown
+  returns promptly. The regression assertion passed in the combined suite.
+- Initial naive offensive policies lost the battle, including a seed-0 run with
+  missed attacks. The final deterministic seed-1 test uses legal defensive first
+  turns and focused attacks. Its complete 20-command winning sequence is in
+  [INTERNET_PLAY.md](INTERNET_PLAY.md), with no scenario modifications.
+
+### Remaining risks and next steps
+
+The private-overlay-plus-TLS Windows procedure is in
+[INTERNET_PLAY.md](INTERNET_PLAY.md): environment, identity, host, private army
+invitations, controls, full battle, loss/rejoin, diagnostics and evidence record.
+**Physical two-PC Internet connectivity and two-human exploratory mouse play
+remain unverified** and are the next human acceptance gate. No firewall/router
+change, account creation, VPN installation or public exposure occurred.
+
+Cooperative yields cannot preempt an individual stuck LT call; only the existing
+bounded settle path is supported. Admission runs after TLS, not before the TLS
+handshake or kernel backlog. No public-service security/load guarantee. Manual
+relaunch is required after connection failure. Host restart loses the battle.
+Token revocation/expiry UX, Windows ACL hardening, campaign persistence, Green
+progression parity, healing/trading/recruitment/promotions and full presentation
+remain deferred. Asset rights must be audited before standalone distribution.
+
+Next: execute and record the private two-PC seed-1 acceptance test. Refine UX and
+timeouts from measured feedback; do not replace that evidence with local tests.
+Continue future campaign/parity work under its separate documented milestones.
+
+## Previous milestone: Internet path, campaign-save and parity methods
 
 ### Implemented and verified
 

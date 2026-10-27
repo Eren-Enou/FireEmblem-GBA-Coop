@@ -1,4 +1,29 @@
-# Assessment: smallest local second-army extension
+# Architecture and original engine assessment
+
+## Phase 3A private-session playability
+
+`Host` retains one asyncio session lock from tactical validation through ordered
+publication. `Session.command_async` consumes `Simulation.execute_steps`, yielding
+between existing LT state updates with `asyncio.sleep(0)`. Synchronous wrappers
+remain for engine tests. All engine actions, AI, RNG and snapshots still run on
+one thread. Per-peer readers/heartbeat tasks only handle validated transport
+messages and close failed writers; they never touch the engine. The four-entry
+request queue and connection/frame token budgets bound ordinary private-session
+pressure. A long individual LT call can still block the loop; there is no unsafe
+worker-thread migration or forced rollback.
+
+Clients answer challenges in their TCP reader, detect host silence and pending
+result expiry, and rejoin manually using the original private invitation. They
+display ownership, phase, peer presence, readiness, movement/attack hints, command
+results, and terminal outcomes. Unknown command outcomes must be resolved by
+rejoin, never automatic replay. Same-revision unsolicited snapshots no longer
+release an unrelated pending command. Exact timers and limits are in the
+[network contract](NETWORK_PROTOCOL.md); the reproducible human acceptance gate
+is in [Internet play](INTERNET_PLAY.md). Complete victory/defeat and failure tests
+use real LT and real sockets. Independent graphical processes remain covered by
+the existing TCP/TLS smoke. No new engine integration points or dependencies.
+
+## Previous assessment and TLS foundation
 
 **Internet-path foundation:** `app/coop/security.py` adds optional verified TLS
 under the same tactical v1 contract. Remote plaintext is rejected; configured TLS

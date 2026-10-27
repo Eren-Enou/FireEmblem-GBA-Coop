@@ -78,6 +78,9 @@ def validate_request(value):
     if kind == 'hello':
         fields(value, ('v', 'type', 'token'))
         string(value['token'], 256)
+    elif kind == 'pong':
+        fields(value, ('v', 'type', 'nonce'))
+        integer(value['nonce'])
     elif kind == 'sync':
         fields(value, ('v', 'type'))
     elif kind == 'command':

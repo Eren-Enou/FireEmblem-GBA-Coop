@@ -2,11 +2,16 @@
 import queue
 import socket
 import threading
+import time
 import uuid
 
 from app.coop.protocol import (MAX_FRAME, TEAMS, VERSION, ProtocolError, decode,
                                encode, fields, integer, require, string, validate_packet,
                                validate_request)
+
+
+READ_TIMEOUT = 35
+RESULT_TIMEOUT = 120
 
 
 class Model:
@@ -36,9 +41,11 @@ class Model:
                     return
                 if packet['revision'] == self.packet['revision']:
                     require(packet['digest'] == self.packet['digest'], 'conflicting_revision')
+            advancing = self.packet is None or packet['revision'] > self.packet['revision']
             self.packet = packet
+            if advancing or self.syncing or (packet['result'] and packet['result']['id'] == self.pending):
+                self.pending = None
             self.syncing = False
-            self.pending = None
             result = packet['result']
             self.message = result['summary'] if result else 'Connected; waiting for both armies'
             if not self.observed or self.observed[-1]['revision'] != packet['revision']:
@@ -97,19 +104,24 @@ class Connection:
         self.model = Model()
         self.inbox = queue.Queue(maxsize=128)
         self.closed = False
-        self.send({'v': VERSION, 'type': 'hello', 'token': token})
+        self.send_lock = threading.Lock()
+        self.pending_since = None
         try:
+            self.send({'v': VERSION, 'type': 'hello', 'token': token})
             self.model.apply(self.read())
             require(self.model.team is not None, 'missing_welcome')
         except Exception:
             self.close()
             raise
-        self.socket.settimeout(None)
+        self.socket.settimeout(READ_TIMEOUT)
         self.thread = threading.Thread(target=self.receive, daemon=True)
         self.thread.start()
 
     def send(self, packet):
-        self.socket.sendall(encode(packet))
+        with self.send_lock:
+            self.socket.sendall(encode(packet))
+        if packet['type'] == 'command':
+            self.pending_since = time.monotonic()
 
     def read(self):
         line = self.stream.readline(MAX_FRAME + 1)
@@ -120,15 +132,34 @@ class Connection:
     def receive(self):
         try:
             while not self.closed:
-                self.inbox.put(self.read(), timeout=5)
+                packet = self.read()
+                if packet.get('type') == 'ping':
+                    fields(packet, ('v', 'type', 'nonce'))
+                    require(type(packet['v']) is int and packet['v'] == VERSION)
+                    integer(packet['nonce'])
+                    self.send({'v': VERSION, 'type': 'pong', 'nonce': packet['nonce']})
+                else:
+                    self.inbox.put(packet, timeout=5)
         except (OSError, ValueError, queue.Full) as exc:
             if not self.closed:
                 try:
                     self.inbox.put_nowait(exc)
                 except queue.Full:
                     self.closed = True
+        finally:
+            # The reader owns its buffered stream. Closing it from the UI thread
+            # can wait on readline's lock for the full Windows socket timeout.
+            self.stream.close()
+            self.socket.close()
 
     def poll(self):
+        if self.closed:
+            self.close()
+            self.model.peers = []
+            raise ConnectionError('Connection closed; reopen the same invitation to rejoin')
+        if self.model.pending and self.pending_since and time.monotonic() - self.pending_since > RESULT_TIMEOUT:
+            self.close()
+            raise ConnectionError('Command outcome unknown; rejoin for host state. Do not replay the action.')
         while True:
             try:
                 packet = self.inbox.get_nowait()
@@ -152,9 +183,11 @@ class Connection:
 
     def close(self):
         self.closed = True
+        self.model.peers = []
         try:
             self.socket.shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
-        self.stream.close()
+        if not hasattr(self, 'thread'):
+            self.stream.close()
         self.socket.close()

@@ -10,8 +10,10 @@ shared enemy AI, followed by cooperative campaign progression. Current completed
 scope includes hot-seat play and a loopback network vertical slice: one LT host,
 two independent graphical clients, Blue -> Green -> Red AI, versioned commands,
 authoritative state and live-host reconnect/resync. Optional verified TLS and
-remote endpoint configuration are implemented and tested locally; separate-PC
-Internet play remains unverified. Campaign saves and full tactical parity are
+remote endpoint configuration, heartbeat loss detection, bounded private-session
+admission/rates, cooperative same-thread engine resolution and complete network
+battles are implemented and tested locally. Rejoin is a manual client relaunch;
+separate-PC Internet play remains unverified. Campaign saves and full tactical parity are
 not implemented; concrete engine-based methods and gates are documented.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
@@ -53,6 +55,10 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   combat solver or import the test harness into production. `simulation.py`
   adapts LT, `server.py` serializes authority, `protocol.py` validates JSON,
   `client.py` maintains verified state, and `view.py` presents it independently.
+- Hold the session lock across cooperative engine-step yields and publication.
+  Heartbeat/read tasks may run between steps but must never access engine state.
+  Do not put LT simulation in independent threads or automatically replay a
+  command whose outcome is unknown. Keep transport queues and deadlines bounded.
 - Plaintext networking remains loopback-only. Remote endpoint configuration
   requires TLS with certificate/name verification before army authentication;
   never add an insecure fallback. Do not expose a public service before its
@@ -67,8 +73,8 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   human-participant, ally and persistent-roster distinctions in the methods.
 - Add engine-harness tests for ownership and tactical behavior. Follow docs/TESTING.md
   for the targeted checks. Record actual outcomes and unresolved failures.
-- Do not add networking until local acceptance checks pass; never describe
-  local ownership checks as network security or synchronization.
+- Preserve the passed local acceptance checks; never describe local ownership
+  checks alone as network security or synchronization.
 - Do not redistribute the sample's proprietary graphics, sounds or story. The
   new terrain/token drawing code is original, but the runtime still uses the
   installed sample's UI, audio and item icons. A standalone release needs an

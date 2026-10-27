@@ -86,8 +86,13 @@ class Simulation:
         get_sound_thread().update([])
 
     def settle(self):
+        for _ in self.settle_steps():
+            pass
+
+    def settle_steps(self):
         for _ in range(6000):
             self.step()
+            yield
             if self.game.state.current() == 'free' and not self.game.state.temp_state:
                 return
         raise RuntimeError('Engine did not reach a command boundary')
@@ -113,6 +118,10 @@ class Simulation:
         return result
 
     def execute(self, team, command):
+        for _ in self.execute_steps(team, command):
+            pass
+
+    def execute_steps(self, team, command):
         from app.engine import action, skill_system
         from app.engine.combat import interaction
         game = self.game
@@ -159,7 +168,7 @@ class Simulation:
             else:
                 raise ProtocolError('unknown_action')
         try:
-            self.settle()
+            yield from self.settle_steps()
         except Exception as exc:
             # Never accept more commands after a possibly partially applied
             # engine operation. There is no speculative rollback in v1.

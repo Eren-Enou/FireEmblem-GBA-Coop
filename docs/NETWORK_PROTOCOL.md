@@ -1,4 +1,4 @@
-# Phase 2 tactical contract — version 1
+# Tactical contract - version 1 with Phase 3A liveness controls
 
 This is a **live training-map session**, not a campaign-save format or a verified
 Internet service. It supports loopback plaintext or optional verified TLS with
@@ -106,7 +106,11 @@ rejected tactical action. They request synchronization when their base is stale.
 Every accepted command resolves to a quiescent human command boundary (or a
 terminal outcome) on the host before another command is processed. An asyncio
 session lock covers validation, resolution and ordered publication. Resolution
-currently blocks host I/O briefly; no real-time responsiveness claim is made.
+yields to network tasks between LT steps on the same event-loop thread. The
+session lock remains held across those yields. No other command, snapshot
+construction or engine operation can interleave with resolution. A single LT
+step (including up to 200 immediate repeats) and snapshot construction remain
+synchronous; a stuck Python extension or engine call cannot be preempted.
 
 Both clients receive the exact same `state` packet:
 
@@ -155,6 +159,47 @@ Restart and inspect the host log; persistent crash recovery is future work.
   It reclaims the same army and receives the current snapshot. No automatic
   reconnect loop, durable reconnect token store, event-log replay or host-restart
   recovery exists. Host restart generates new credentials and a fresh map.
+
+## Liveness and bounded private-session service (Phase 3A)
+
+Use the same current client/host commit. Tactical v1 packet fields are unchanged;
+this control-message extension requires a client that understands `ping`. Older
+clients must update rather than silently disabling liveness checks.
+
+- After welcome, the host sends `{v:1,type:"ping",nonce:N}` every five seconds
+  when no challenge is outstanding. The client reader answers
+  `{v:1,type:"pong",nonce:N}` immediately, independently of pygame polling.
+  Host nonces start at one and increase per connection. Only the outstanding
+  nonce is accepted. Unknown fields, booleans and unsolicited/replayed pong close
+  the connection. Ordinary messages cannot substitute for the challenge response.
+- An unanswered challenge expires after 20 seconds, checked on the five-second
+  timer (about 25 seconds after the last acknowledged challenge). Host closes
+  that socket, excludes it from command readiness, then publishes connected-seat
+  status at the next command boundary. The live session and RNG are preserved.
+- The client socket read deadline is 35 seconds without a host frame. A pending
+  tactical command has a 120-second result deadline checked by UI polling. On
+  expiry it disconnects with an **unknown outcome** warning; it never retries the
+  command. Rejoin with the same invitation to learn the committed host state.
+- A dedicated reader per peer processes heartbeats and EOF while the command
+  processor awaits the simulation lock. There are at most four queued requests
+  per peer. EOF/heartbeat failure closes the writer immediately, even during
+  resolution; an already accepted command still finishes and publishes once.
+  Subsequent commands require both non-closing seats. Rejoin and sync take the
+  same lock and can only receive a completed authoritative boundary.
+- At most eight accepted TCP/post-TLS application connections may be admitted,
+  including two seats and pending hellos. Global admission uses a burst of 16
+  with two new attempts/second replenishment. Hello has a five-second deadline.
+  An authenticated peer has a burst of 30 frames with 10/second replenishment,
+  including pong and sync. Queue/rate/admission violations close that connection
+  without mutating the simulation. Existing five-second write/TLS timeouts and
+  10,000 request IDs/army bounds remain.
+- These are trusted-session safeguards. The application admission cap runs
+  **after TLS negotiation**; it does not bound kernel backlogs or simultaneous
+  TLS handshakes. There is no public-service DoS guarantee, token revocation,
+  account system or durable recovery.
+- The client reader owns buffered-stream cleanup. UI close shuts down the socket
+  without waiting for its stream read lock, avoiding a Windows 35-second stall.
+  Connection failure clears command readiness and leaves the last board visible.
 
 This contract is deliberately limited to the test map. Persistent campaigns,
 deployment, recruitment, promotions, allied trades/healing, full Green leveling

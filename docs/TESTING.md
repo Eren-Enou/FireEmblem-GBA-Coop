@@ -1,6 +1,59 @@
 # Environment and verification
 
-## TLS Internet-path foundation and campaign-readiness audit
+## Phase 3A playability verification
+
+From the actual repository root, using the documented Python 3.12 environment
+and OpenSSL CLI on PATH for TLS test identities:
+
+```powershell
+.venv\Scripts\python.exe -m unittest app.tests.test_network_playability -q
+.venv\Scripts\python.exe -m unittest app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip -q
+.venv\Scripts\python.exe utilities/smoke_network.py --tls
+```
+
+Executed October 27, 2026: new suite **9 passed in 22.182 seconds**; final combined
+suite **112 passed in 79.877 seconds**. In this environment the existing OpenSSL
+binary directory `C:\Ruby33-x64\msys64\usr\bin` was prepended to this process's
+PATH for the TLS checks; nothing was installed and system PATH was not changed.
+The final combined run includes the under-one-second UI-close regression.
+
+The new suite uses actual client reader threads, real TCP sockets and one real
+LT simulation on the asyncio thread. Seed 1 is explicit. Complete victory uses
+20 commands through turn 3; passive defeat uses six through turn 4. Every
+accepted action compares the entire host/Blue/Green packet including revision,
+digest, RNG, HP, inventories, positions and terminal state. Victory includes
+move/attack/wait/end-phase; both outcomes include deaths and terminal rejection.
+It does not replace Red AI or alter fixtures/stats/objectives.
+
+Failure tests shorten heartbeat/read timers to fractions of a second. A silent
+raw client never answers its challenge; a separate live client detects its loss,
+pauses and accepts same-army rejoin. Another test silences host challenges without
+sending EOF and checks client read timeout. A held real LT step lets the test
+close Green while resolution owns the session lock, observe continued Blue
+heartbeats and prompt Green EOF detection, then release resolution and compare
+its single committed result after rejoin. No LT operation runs in a worker thread.
+Other checks cover eight-socket admission, queue flood, sequential sync-rate
+exhaustion, malformed pong, controlled socket closure and unknown-outcome expiry
+without replay. Existing tests retain stale/duplicate/delayed/ownership, bad TLS
+identity, resync and malformed-frame coverage. These are local controlled tests,
+not measured WAN loss or public-service stress/security certification.
+
+The explicit TLS graphical smoke passed with host 96800 and clients
+153284/151988, ten equal snapshots through revision 9. Reports/logs/PNGs stay in
+ignored `artifacts/network-smoke/run-9809505c/`; Green render was inspected and
+showed TLSv1.3. The combined suite also runs the existing TCP and TLS
+three-process smoke tests. Full repository suite and editor smoke were not run.
+
+Initial diagnostic runs hung in new test teardown until accepted sockets were
+closed before listener wait; these runs were interrupted, not counted as passes.
+One test exposed a real Windows 35-second buffered-stream-close stall, fixed by
+reader-owned cleanup. Naive offensive battle policies lost; the final untouched
+seed-1 winning sequence is reproducible in [INTERNET_PLAY.md](INTERNET_PLAY.md).
+That document also contains the exact two-PC Windows setup, secure invitation
+transfer, controls, diagnostics, reconnection and human evidence checklist.
+**Actual two-PC Internet play and two-human mouse play remain unverified.**
+
+## Earlier TLS Internet-path foundation and campaign-readiness audit
 
 Optional TLS uses standard Python `ssl`; generating identities and running TLS
 tests also require OpenSSL CLI on PATH. Existing local TCP tests do not require
@@ -38,7 +91,7 @@ Full selected regression command for this milestone:
 Standalone TLS run: 8 passed in 9.150 seconds. Final combined run: **103 passed in
 55.232 seconds** (8 TLS, 22 existing network and 73 selected engine/hot-seat checks).
 TLS smoke compared 10 snapshots through revision 9. Separate-PC
-WAN connectivity, silent-loss heartbeat detection, rate/load behavior, actual
+WAN connectivity, public-service load behavior, actual
 campaign restore and full parity remain unverified/unimplemented as documented
 in [Internet play](INTERNET_PLAY.md) and [campaign methods](CAMPAIGN_AND_PARITY.md).
 

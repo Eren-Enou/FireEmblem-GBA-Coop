@@ -1,138 +1,178 @@
-# Internet-play path and first remote pilot
+# Private Internet play and the first two-PC test
 
-Status: optional verified TLS transport is implemented; **Internet play on two
-PCs has not been verified**. This document defines a route and acceptance gates,
-not a production-security or NAT-connectivity claim. The existing loopback TCP
-launcher remains available. Tactical protocol v1 and LT authority are unchanged.
+Phase 3A is locally verified: TLS, authenticated armies, liveness detection,
+bounded admission/rates, live-host rejoin and complete network battles.
+**Actual two-PC Internet connectivity remains unverified.** The physical remote
+playtest is a separate human acceptance gate. No firewall, router, account,
+external service or public port configuration was changed during development.
 
-## Implemented transport boundary
+## Connectivity choice and trust
 
-`app/coop/security.py` uses standard Python SSL contexts: TLS 1.2 or newer,
-required certificate validation and expected server-name checking. A client
-finishes TLS verification **before** sending its army token. The host must provide
-a certificate, its private key and an expected certificate name together. Remote
-plaintext listeners and remote plaintext invitations reject. The local plaintext
-client also checks its actual peer address, not just the requested hostname.
-See the [Python SSL documentation](https://docs.python.org/3.12/library/ssl.html)
-for context/certificate semantics; transport behavior is additionally tested here.
+Use a private overlay/VPN already configured for the two intended Windows PCs,
+plus the game's verified TLS. An overlay avoids implementing NAT traversal or a
+relay in this milestone. For example, the existing evaluation refers to
+[Tailscale's connection types](https://tailscale.com/docs/reference/connection-types):
+direct connections and provider relay fallback are connectivity options, not
+proof that these particular PCs can connect. Service selection, installation,
+accounts and OS/network-policy changes require the users' separate decision.
+Direct public hosting and a public relay/matchmaking service remain out of scope.
 
-The setup helper creates a short-lived, dedicated self-signed development trust
-anchor/server certificate. Its public certificate travels in each private JSON
-invitation alongside the endpoint, expected name and army capability. Share the
-correct army's invitation through an already trusted private channel; replacing
-an invitation can replace both identity and capability. The private key remains
-on the host. No trust-on-first-use prompt or insecure verification bypass exists.
-Normal certificate date/hostname/chain checks remain enabled.
+TLS verifies the host certificate and expected name **before** the army token is
+sent. Remote plaintext is rejected. Invitations contain the endpoint, public
+trust certificate, expected name and a bearer capability for exactly one army.
+Deliver them through an already trusted private channel. Replacing an invitation
+can replace both trust and credentials. Never send the host's private key or
+Blue's invitation to the Green player. Never disable certificate verification.
+See the [network contract](NETWORK_PROTOCOL.md) and
+[Python SSL documentation](https://docs.python.org/3.12/library/ssl.html).
 
-This is server identity plus bearer-token army authentication, not mutual TLS,
-accounts, anti-cheat against a malicious host, revocable persistent identities or
-a public matchmaking service. Host restart creates new army tokens; invitations
-from the previous session no longer work. The development certificate expires
-after seven days by default; use synchronized clocks and issue a new identity in
-a new directory when needed. Keep identity keys/invitations out of Git. Windows
-ACL hardening and token delivery UX remain to be implemented.
+## Prepare both Windows PCs
 
-## Connectivity choice
+1. Use an already configured private overlay restricted to the intended devices.
+   Determine the hosting PC's reachable private overlay IP. Bind only that IP for
+   this pilot; do not expose a public listener or change router/firewall settings
+   as a workaround.
+2. On each PC clone [the project](https://github.com/Eren-Enou/FireEmblem-GBA-Coop),
+   or update its existing checkout. Compare `git rev-parse HEAD`: use the same
+   current Phase 3A commit on host and both clients. The tactical v1 fields are
+   preserved, but older clients lack the required ping/pong control extension.
+   Keep the inherited development resources present; do not create an
+   unauthorized game-asset bundle for the other player.
+3. From the repository root, create the environment if it does not exist:
 
-| Route | Work needed | Decision |
-| --- | --- | --- |
-| Private overlay VPN + application TLS | Both PCs join a controlled private network; host advertises its reachable VPN address; restrict access to those devices | Recommended first two-PC pilot; no in-game NAT/relay implementation needed |
-| Direct TLS host | Reachable host IP/DNS, inbound firewall rule and usually router configuration; some ISP topologies cannot accept inbound connections | Later opt-in pilot after hardening; no router/OS changes are made by this project |
-| Dedicated public relay/host | Operated service, credentials, capacity, abuse controls and monitoring | Later accessibility work; do not substitute an unauthenticated arbitrary TCP forwarder |
+   ```powershell
+   py -3.12 -m venv .venv
+   .venv\Scripts\python.exe -m pip install -r requirements_editor.txt
+   .venv\Scripts\python.exe -c "from app.engine.codegen import source_generator; source_generator.generate_all()"
+   ```
 
-For example, Tailscale documents direct connections and relay fallback when
-direct connectivity cannot be established. That makes a private overlay a
-practical first experiment, not proof that a particular user's network works.
-[Official connection-type documentation](https://tailscale.com/docs/reference/connection-types).
-No provider is installed, account created, pricing assumption made, or firewall
-changed by this milestone. A provider/account decision belongs to the two players.
+4. The host needs an existing OpenSSL CLI to generate a development identity.
+   The helper accepts `--openssl "C:\path\to\openssl.exe"` if necessary. The
+   ordinary remote client needs no OpenSSL CLI; transport uses Python `ssl`.
+   Correct both clocks before TLS verification.
 
-## Reproducible TLS localhost check
+## Start host and clients
 
-OpenSSL CLI is needed **only to generate a development identity and run TLS
-certificate tests**. Game transport uses Python's standard `ssl` library. The
-helper accepts `--openssl PATH` if it is not on PATH; the test suite expects it
-on PATH. No new Python package is required.
+The address `100.100.100.10` below is a **placeholder**, not a tested endpoint.
+Replace both occurrences with the host's actual reachable private overlay IP.
+The certificate name need not resolve when the invitation connects to an IP.
 
-From the repository root:
-
-```powershell
-.venv\Scripts\python.exe utilities/create_tls_identity.py --server-name localhost --output-dir artifacts/tls
-.venv\Scripts\python.exe run_network.py host --tls-cert artifacts/tls/server-cert.pem --tls-key artifacts/tls/server-key.pem --server-name localhost
-```
-
-Then launch the same Blue and Green client commands in two other terminals:
-
-```powershell
-.venv\Scripts\python.exe run_network.py client --session-file artifacts/network/blue.json
-.venv\Scripts\python.exe run_network.py client --session-file artifacts/network/green.json
-```
-
-TLS options are embedded in the invitation; the client interface shows the
-negotiated TLS version. The identity helper refuses to overwrite existing keys.
-Reuse the existing identity while valid, or choose a new output directory.
-Automated, ephemeral identities and a full three-process game check:
-
-```powershell
-.venv\Scripts\python.exe utilities/smoke_network.py --tls
-.venv\Scripts\python.exe -m unittest app.tests.test_network_tls -q
-```
-
-## First private two-PC pilot — requires real players/network access
-
-Use a reachable **private VPN address** on the hosting PC. Generate a certificate
-with a stable expected name such as `two-banners.local` (the name is verified from
-the trusted invitation; it need not resolve when the endpoint is an IP address).
-Bind only the desired interface, or explicitly advertise a reachable address
-when binding a wildcard. Example addresses below are placeholders, not tested
-endpoints; replace them with that PC's actual address:
+On the host, from the repository root:
 
 ```powershell
 .venv\Scripts\python.exe utilities/create_tls_identity.py --server-name two-banners.local --output-dir artifacts/pilot-tls
-.venv\Scripts\python.exe run_network.py host --bind 100.100.100.10 --advertise-host 100.100.100.10 --tls-cert artifacts/pilot-tls/server-cert.pem --tls-key artifacts/pilot-tls/server-key.pem --server-name two-banners.local
+.venv\Scripts\python.exe run_network.py host --bind 100.100.100.10 --advertise-host 100.100.100.10 --tls-cert artifacts/pilot-tls/server-cert.pem --tls-key artifacts/pilot-tls/server-key.pem --server-name two-banners.local --seed 1
 ```
 
-The local Blue client also connects to that advertised VPN endpoint. Privately
-transfer **only** `green.json` to the friend (not `blue.json` or the host key).
-They run the same client command against their local copy. Their firewall/private
-network policy must permit the chosen host port from the intended peer. If the
-connection fails, investigate reachability separately from certificate/name/date
-errors; never “fix” it by disabling verification or changing to remote plaintext.
+The identity helper refuses overwrites. Reuse an existing valid identity or use
+another output directory. The dedicated development certificate expires after
+seven days by default (helper allows 1-30 days). Keep the key only on the host.
+Windows chmod is not a complete ACL policy; keep the folder private to your user.
 
-Record this gate's evidence in PROGRESS.md:
+Wait for `HOST_READY`. Keep that terminal open. In a second host terminal:
 
-1. Two distinct Windows PCs on different physical networks; exact commit and
-   protocol version, endpoint route, seed and negotiated TLS version.
-2. Initial matching revision/digest; each army moves, waits and attacks; Red acts;
-   HP, inventory/durability, terminal outcomes and phase match at both clients.
-3. Wrong name/untrusted identity rejected before token; wrong army credential and
-   stale/duplicate commands rejected without simulation mutation.
-4. Disconnect a player while idle and while a command resolves; both agree on
-   the committed boundary, remaining player pauses, correct army can rejoin.
-5. Test representative delay/jitter and stalled/abrupt connections. Record actual
-   delay distributions, resolution times and timeout behavior rather than labels
-   such as “lag tested.” No WAN results exist yet.
+```powershell
+.venv\Scripts\python.exe run_network.py client --session-file artifacts/network/blue.json
+```
 
-## Gates before opening a public service
+Privately transfer **only** `artifacts/network/green.json` to the friend. They
+place it in their own ignored `artifacts/network/` directory and run:
 
-- Review and update Python/OpenSSL and project dependency patch levels for the
-  deployment; the recorded local development environment is not a production
-  security certification.
-- Add bounded pre-auth connection capacity, authentication rate limits and
-  operational per-peer admission controls. TLS alone does not prevent resource
-  exhaustion or guessing/flood attempts.
-- Add an application heartbeat/idle-failure policy and command-result deadlines.
-  Current EOF detection is not a reliable quick detector for a silent WAN loss.
-- Bound/reschedule long engine resolution so network liveness is not held up by
-  animations, AI, scripted events or unexpected prompts; preserve one authority.
-- Provide certificate/token rotation, explicit invitation expiry/revocation,
-  host identity UX, Windows private-file ACL handling and redacted diagnostics.
-- Test transport downgrade attempts, bad identities, slow readers, half-open
-  connections, reconnect storms and malformed traffic under load.
-- Choose a NAT/connectivity route with real two-PC evidence. No STUN/TURN, relay
-  infrastructure, automatic port forwarding or automatic reconnect is implemented.
+```powershell
+.venv\Scripts\python.exe run_network.py client --session-file artifacts/network/green.json
+```
 
-The next product work is the private two-PC pilot and the liveness/admission
-slice. Then implement the [campaign-save and tactical-parity methods](CAMPAIGN_AND_PARITY.md)
-in tested increments. Full campaign saves and tactical parity are not enabled by
-the TLS feature.
+Blue should show `You: BLUE`, the friend `You: GREEN`, and both should show
+TLSv1.2 or TLSv1.3, both connected seats, and matching turn/phase/revision/Check.
+Host restart creates a fresh map and new invitations, invalidating old tokens.
+There is no host-restart recovery. Stop the host with Ctrl+C after the session.
+
+## Controls and a reproducible complete battle
+
+Click your unit, then an outlined tile to **commit** a move. Click an outlined
+Red token to attack with the selected weapon; number keys select inventory
+weapons. W waits; E ends the army phase; R resynchronizes. Right-click/Escape
+deselect. Selecting another army only inspects it. Gray units are finished.
+Hover shows zero-based `(x,y)` coordinates. Selection shows HP, tile, movement,
+weapon uses and attack choices. Green End resolves Red AI on the host before
+publishing the next Blue boundary. Shared victory/defeat retains the final board.
+
+The following seed-1 sequence is the automated winning baseline. Each attack
+uses the unit's Iron Axe; these are tactical commands, not fixture modifications:
+
+1. Turn 1: wait both Blue units, End; wait both Green units, End.
+2. Blue turn 2: move Captain to `(5,2)`, attack Red 1; move Guard to `(5,4)`,
+   finish Red 1; End.
+3. Green turn 2: Guard attacks Red 2; move Captain to `(5,6)`, finish Red 2; End.
+4. Blue turn 3: Guard attacks Red 3; move Captain to `(4,5)`, attack Red 3; End.
+5. Green Captain finishes Red 3. Expect shared victory, revision **20**, turn **3**.
+
+Different actions or seeds can change the result. On a separate fresh seed-1
+host, both armies repeatedly ending their phases without acting produces shared
+defeat at revision **6**, Blue turn **4**. Restarting the host requires privately
+redistributing its new Green invitation before this separate test.
+
+## Disconnect and rejoin
+
+Close Green while idle: Blue pauses when GREEN disappears. Relaunch the same
+Green invitation against the still-running host; it reclaims GREEN and receives
+the latest completed state. Repeat while a command/Red AI resolves: that accepted
+command finishes exactly once, then compare revision/Check after rejoin. There
+is no automatic tactical replay. Never repeat an action with an unknown outcome.
+
+The host challenges every five seconds and expires an unanswered challenge after
+20 seconds (about 25 seconds from the last acknowledgment). The client closes
+after 35 seconds without any host frame. A command pending for 120 seconds gives
+an unknown-outcome warning and disconnects. Restore connectivity and manually
+relaunch the same invitation to recover authoritative state. During resolution,
+transport readers keep running between LT steps; peer status is published at
+the next completed command boundary. A single stuck engine call is not preempted.
+
+## Diagnose a failed connection
+
+| Symptom | Check / action |
+| --- | --- |
+| Refused or timeout | Host is running; invitation IP is its current private overlay IP and port matches (default 38670); both devices are online in the private overlay. `Test-NetConnection <host-private-IP> -Port 38670` checks TCP reachability only. Review existing OS/private-network policy without automatic changes. |
+| TLS name/CA/date failure | Use the original correct invitation, expected certificate name, valid certificate and correct clocks. After expiry, generate a new identity in a new directory and restart to regenerate invitations. Never disable validation. |
+| authentication_failed | Invitation belongs to this live host. Restart invalidates previous tokens. Privately transfer the intended army invitation again. |
+| seat_in_use | Close the old client or allow its heartbeat to expire, then relaunch. Do not substitute the other army token. |
+| admission_limit / rate_limit / request_queue_full | Stop extra clients/scripts, wait for admission credits to replenish, relaunch. Simulation remains intact. |
+| Missing peer / heartbeat timeout / host silence | Restore private connectivity and relaunch the same invitation while the host remains alive. |
+| Stale-base rejection or Check differs | Wait for resolution, press R on each client, compare at rest. Automatic resync handles stale/digest rejection. Persistent mismatch: stop commands, keep redacted logs/commit/revisions for investigation. |
+| Unknown command outcome | Rejoin for authoritative state; do not blindly replay. |
+| Host resolution fault | Session freezes. Inspect host log; no crash save/rollback exists. Restart creates a fresh battle. |
+
+Never paste invitation contents or private keys into reports. Report only commit,
+army, phase/turn, revision/Check, transport, error code and redacted timestamps.
+
+## Physical acceptance record - still unverified
+
+Record results in [PROGRESS.md](PROGRESS.md) only after executing the remote test:
+
+- Two distinct Windows PCs on different physical networks; same commit,
+  protocol, private route, seed, TLS version and timing observations.
+- Matching initial state, movement/wait/attack by both armies, repeated Red AI,
+  HP/durability/death and a matching complete terminal outcome.
+- Idle and resolution disconnect, pause, correct-army rejoin and matching state;
+  representative delayed/abrupt/silent-loss behavior and measured timeout times.
+- A certificate/name/credential failure closes safely; neither player can command
+  the other army. Automated negative cases are in the local regression suite.
+
+No two-PC, WAN latency/jitter, packet-loss or two-human mouse-play result has
+been claimed by local automation.
+
+## Remaining public-service gates
+
+Application admission is now capped at eight post-TLS sockets, with a global
+burst of 16/two new attempts per second. Authenticated peers have burst 30/ten
+frames per second and a four-request queue. These are proportionate private
+pilot controls. They do not cap simultaneous TLS handshakes or kernel backlogs.
+Before public exposure, review those resources, slow readers/reconnect storms,
+runtime/dependency patch levels and adversarial load. Heartbeats/result deadlines
+need real WAN measurements. Individual engine calls and unsupported event prompts
+need further audit before broader scenarios. Certificate/token expiry/revocation
+UX, Windows ACL handling and durable recovery remain future work.
+
+No public matchmaking, relay service, automatic port forwarding, VPN installation,
+automatic reconnect loop, campaign saves or full tactical parity is implemented.
+Future campaign work follows [CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md).

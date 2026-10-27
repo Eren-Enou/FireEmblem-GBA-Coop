@@ -47,12 +47,13 @@ parity: Green XP/leveling, roster menus, supports and campaign saves are deferre
 - [x] Three-process graphical acceptance test compares every observed revision,
   demonstrates movement/combat for both armies and resolves Red AI.
 - [ ] Two humans explore the client controls and play the full test map to an outcome.
-- [ ] Improve tactical presentation/command UX after that feedback.
+- [x] Basic action highlighting, movement counts, connection/error and terminal status.
+- [ ] Refine tactical UX after two-human feedback.
 
 This slice uses a separate lightweight client renderer; it does not mirror LT's
 full menus/animations. Moves commit immediately; Red resolves atomically between
 human phases. Client reconnect needs a manual relaunch; host-restart recovery,
-durable saves, internet transport and full tactical/campaign parity remain open.
+durable saves, verified WAN play and full tactical/campaign parity remain open.
 
 ## Phase 3: Internet path (TLS foundation implemented; WAN pilot unverified)
 
@@ -64,8 +65,15 @@ durable saves, internet transport and full tactical/campaign parity remain open.
 - [x] Connectivity comparison, recommended private-overlay pilot and measurable gates
   in [INTERNET_PLAY.md](INTERNET_PLAY.md).
 - [ ] Two Windows PCs on different networks complete the private pilot.
-- [ ] Heartbeats, result deadlines, admission/rate limits, credential lifecycle and
-  network responsiveness during long engine resolution.
+- [x] Phase 3A: heartbeat/host-silence/result deadlines, bounded admission/queues
+  and frame rates, same-thread network yields during locked engine resolution.
+- [x] Phase 3A: complete socket-driven battles to victory and defeat; identical
+  snapshots/revisions after every accepted action; death and terminal freeze.
+- [x] Phase 3A: silent loss, idle/resolution disconnect, rejoin, malformed pong,
+  sequential rate and queue floods, controlled shutdown and UI-close regression.
+- [x] Phase 3A: movement/attack/readiness hints and Windows private two-PC procedure.
+- [ ] Invitation expiry/revocation and Windows private-file ACL UX.
+- [ ] Bound individual engine calls/TLS pre-handshake resource use before public hosting.
 - [ ] Representative WAN latency/jitter, half-open connections and reconnect storms.
 - [ ] Public-host/relay connectivity design and operational/security review before exposure.
 

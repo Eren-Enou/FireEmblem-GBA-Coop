@@ -1,16 +1,17 @@
 # Two Banners — cooperative tactical prototype
 
-Phase 2 now provides one authoritative Lex Talionis host and **two independent
-graphical clients** on the same PC. Blue and Green submit tactical commands;
-the host resolves movement, combat, inventory durability, objectives and Red AI.
-Both clients receive verified, revisioned state. This is local networking;
-internet play, campaign saves and full Green progression parity are not ready.
+Phase 3A provides one authoritative Lex Talionis host and **two independent
+graphical clients**. Blue and Green command their own armies; the host resolves
+movement, combat, durability, objectives and Red AI. Local automation verifies
+complete battles, identical authoritative state, heartbeat failures and live-host
+rejoin. Network processing runs between LT steps without parallel engine work.
 
-An opt-in verified TLS transport now provides the next step toward remote play.
-See the [Internet-play path](docs/INTERNET_PLAY.md) for identity setup, a private
-two-PC pilot procedure and the remaining public-service gates. WAN play is not
-yet verified. [Campaign saves and tactical parity](docs/CAMPAIGN_AND_PARITY.md)
-have source-based implementation methods; they are not implemented features.
+Verified TLS supports private remote endpoints. Follow the
+[Windows two-PC playtest procedure](docs/INTERNET_PLAY.md) for environment setup,
+identity creation, private army invitations, controls, a complete battle and
+reconnection. **Actual two-PC Internet play remains unverified.** Campaign saves,
+full Green progression parity and public matchmaking are not implemented.
+[Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:
 
@@ -101,4 +102,5 @@ Visit the Discord server (https://discord.gg/dC6VWGh4sw) to discuss how you can 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+Lex Talionis engine code is licensed under the MIT License - see [LICENSE.txt](LICENSE.txt).
+Game assets have separate rights; see the [asset policy](docs/ASSET_POLICY.md).
