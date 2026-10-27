@@ -34,7 +34,7 @@ See the [network contract](NETWORK_PROTOCOL.md) and
    as a workaround.
 2. On each PC clone [the project](https://github.com/Eren-Enou/FireEmblem-GBA-Coop),
    or update its existing checkout. Compare `git rev-parse HEAD`: use the same
-   current protocol-v2 commit on host and both clients. Protocol v2 includes weapon XP/mana and ping/pong controls; old clients must
+   current protocol-v3 commit on host and both clients. Protocol v3 includes healing choices, weapon XP/mana and ping/pong controls; old clients must
    update.
    Keep the inherited development resources present; do not create an
    unauthorized game-asset bundle for the other player.

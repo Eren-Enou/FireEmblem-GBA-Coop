@@ -1,7 +1,8 @@
 # Campaign saves and full tactical parity: implementation methods
 
 Status: Phase 4A core XP/level/growth parity is implemented and locally tested;
-see [PROGRESSION.md](PROGRESSION.md). Campaign saves and the broader parity
+see [PROGRESSION.md](PROGRESSION.md). Phase 4B adds the narrow allied Heal/Mend
+staff slice and original [Mutual Aid encounter](HEALING.md). Campaign saves and the broader parity
 methods below remain design work, not implemented campaign features.
 This document follows the tested [Internet transport path](INTERNET_PLAY.md).
 It preserves the full goal: two allied commanders completing multiple chapters

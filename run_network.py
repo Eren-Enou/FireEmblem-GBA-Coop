@@ -53,7 +53,7 @@ def main():
     server = modes.add_parser('host', help='Start the authoritative local simulation')
     server.add_argument('--port', type=int, default=38670)
     server.add_argument('--seed', type=int, default=0)
-    server.add_argument('--scenario', choices=('training', 'progression'), default='training')
+    server.add_argument('--scenario', choices=('training', 'progression', 'healing'), default='training')
     server.add_argument('--growth-method', choices=('Fixed', 'Random', 'Dynamic'),
                         help='Host-only player growth setting; progression drill defaults to Fixed')
     server.add_argument('--session-dir', default='artifacts/network')

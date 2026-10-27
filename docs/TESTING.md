@@ -1,6 +1,52 @@
 # Environment and verification
 
-## Phase 4A progression verification
+## Phase 4B healing verification
+
+Use the existing Python 3.12 environment from the actual `FE-GBA-Coop` repository
+root. OpenSSL CLI must be on PATH for TLS identities. This adds no dependencies.
+
+```powershell
+.venv\Scripts\python.exe -m unittest app.tests.test_coop_healing -q
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_healing app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe -m unittest app.tests.test_coop_healing.HealingUITests app.tests.test_coop_healing.HealingProcessTests -q
+.venv\Scripts\python.exe -u utilities/smoke_network.py --tls --healing
+```
+
+Executed October 27, 2026: combined **154 passed in 169.261 seconds** (11 healing
+plus 143 existing selected checks). After a small queued-event selection refresh,
+the focused two checks passed in **5.010 seconds**, followed by a successful final
+explicit TLS smoke. Existing OpenSSL path used for this process only:
+`C:\Ruby33-x64\msys64\usr\bin`; no system settings or software installation.
+
+Authority tests use the real LT harness for all four army pairings, capped HP,
+native Heal/Mend charges/XP/weapon XP/level/action completion and ownership
+preservation. Rejections cover wrong phase/owner, item instance/type/class/rank,
+charges, availability, finished/attacked/unselectable actor, range, dead/full-HP/
+enemy/self/absent targets. Snapshot/RNG equality is checked across invalid
+actions. Native Mend's D rank is read from the database (31), not invented by
+the adapter. Network tests reject duplicates/stale/forged payloads, compare full
+host/Blue/Green packets, rejoin and sync without repeated rewards, and fight
+after support. A full battle wins legitimately at revision 18/turn 3 with six
+heals. A supported-versus-unsupported Red round verifies a real tactical benefit.
+
+The graphical smoke starts three independent processes and supports both cross-
+army directions before later combat. Final TLS run: host PID 148472, client PIDs
+53208/143124, **13 equal snapshots, revision 12**, Blue turn 3. Reports, PNGs,
+certificates and invitations remain ignored under
+`artifacts/network-smoke/run-c98a32bc/`. Final Blue render and earlier TLS render
+at `run-ece2cd09` were visually inspected for mint targets, Heal uses, level/stats/XP and
+TLSv1.3. The scripts drive real command/model/rendering, not physical mouse input.
+The selected-item targeting rule also has a focused UI test.
+
+Reproduce manual play with [HEALING.md](HEALING.md). To inspect same-army support,
+move into the documented free adjacent tiles; to exercise cross support, select
+the healer, choose Heal, click a mint ally and inspect HP/charges/XP/finished
+state on both clients. Try an off-phase action and rejoin using the same private
+invitation. Separate-PC/WAN, two-human exploration and the full repository suite
+were not run. Initial test/fixture failures and their resolutions are recorded
+in [PROGRESS.md](PROGRESS.md); there are no known failing selected checks.
+
+## Earlier Phase 4A progression verification
 
 Use the existing Python 3.12 environment. OpenSSL CLI must be on PATH for TLS
 identity tests; the game transport and progression add no dependencies.

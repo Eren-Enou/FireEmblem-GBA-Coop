@@ -85,6 +85,12 @@ class Session:
                                f"uses {[i['uses'] for i in old['inventory']]} -> {[i['uses'] for i in new['inventory']]}")
         growth = progression_changes(before, after)
         summary = '; '.join(growth) + '; ' if growth else ''
+        if request['action'] == 'heal':
+            old_target = next(u for u in before['units'] if u['id'] == request['target'])
+            new_target = next(u for u in after['units'] if u['id'] == request['target'])
+            summary = (f"HEAL {request['unit']} -> {request['target']}: "
+                       f"HP {old_target['hp']} -> {new_target['hp']} "
+                       f"(+{new_target['hp']-old_target['hp']}); " + summary)
         summary += f"{team}: {request['action']}"
         if request['action'] == 'end_phase':
             summary += f"; {before['phase']} -> {after['phase']}, turn {after['turn']}"

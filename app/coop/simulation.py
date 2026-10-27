@@ -8,7 +8,7 @@ from app.coop.protocol import ProtocolError
 
 class Simulation:
     def __init__(self, seed=0, scenario="training", growth_method=None):
-        if scenario not in ('training', 'progression'):
+        if scenario not in ('training', 'progression', 'healing'):
             raise ValueError('Unknown trusted scenario')
         if growth_method not in (None, 'Fixed', 'Random', 'Dynamic'):
             raise ValueError('Unsupported growth method')
@@ -38,6 +38,9 @@ class Simulation:
         if scenario == 'progression':
             from app.coop import progression_demo
             level_id = progression_demo.install()
+        elif scenario == 'healing':
+            from app.coop import healing_demo
+            level_id = healing_demo.install()
         # Preserve the same objectives/events, but keep the final board for
         # clients instead of entering local chapter/title/game-over presentation.
         for event in DB.events:
@@ -51,6 +54,9 @@ class Simulation:
         if scenario == 'progression':
             self.game.current_mode.growths = growth_method or 'Fixed'
             progression_demo.initialize(self.game)
+        elif scenario == 'healing':
+            self.game.current_mode.growths = growth_method or 'Fixed'
+            healing_demo.initialize(self.game)
         elif growth_method:
             self.game.current_mode.growths = growth_method
         self.units = list(self.game.units)
@@ -131,6 +137,23 @@ class Simulation:
                     result.append({'item': item.uid, 'target': target.nid})
         return result
 
+    def heals(self, unit):
+        from app.engine import item_funcs, item_system, skill_system
+        if not unit.position or unit.dead or unit.is_dying or unit.finished or unit.has_attacked:
+            return []
+        result = []
+        # Trusted, single-target staff slice; not arbitrary Use/event execution.
+        for item in self.game.target_system.get_spells(unit):
+            if item.nid not in ('Heal', 'Mend') or not item_funcs.is_heal(unit, item):
+                continue
+            if item.sequence_item or item.multi_item or item_system.num_targets(unit, item) != 1:
+                continue
+            for pos in sorted(self.game.target_system.get_valid_targets(unit, item)):
+                target = self.game.board.get_unit(pos)
+                if target and not target.dead and not target.is_dying and skill_system.check_ally(unit, target):
+                    result.append({'item': item.uid, 'target': target.nid})
+        return result
+
     def execute(self, team, command):
         for _ in self.execute_steps(team, command):
             pass
@@ -169,13 +192,15 @@ class Simulation:
                 game.state.change('movement')
             elif kind == 'wait':
                 unit.wait(actively_chosen=True)
-            elif kind == 'attack':
+            elif kind in ('attack', 'heal'):
                 choice = {'item': command['item'], 'target': command['target']}
-                if choice not in self.attacks(unit):
-                    raise ProtocolError('illegal_attack')
+                legal = self.heals(unit) if kind == 'heal' else self.attacks(unit)
+                if choice not in legal:
+                    raise ProtocolError('illegal_heal' if kind == 'heal' else 'illegal_attack')
                 item = next(i for i in unit.items if i.uid == command['item'])
                 target = game.get_unit(command['target'])
-                action.do(action.EquipItem(unit, item))
+                if kind == 'attack':
+                    action.do(action.EquipItem(unit, item))
                 game.cursor.cur_unit = unit
                 game.cursor.set_pos(unit.position)
                 interaction.start_combat(unit, target.position, item, skip=True)
@@ -208,7 +233,8 @@ class Simulation:
                 'inventory': [{'uid': i.uid, 'nid': i.nid, 'name': i.name,
                                'uses': i.data.get('uses')} for i in unit.items],
                 'moves': [list(p) for p in self.moves(unit)] if self.status == 'playing' else [],
-                'attacks': self.attacks(unit) if self.status == 'playing' else []})
+                'attacks': self.attacks(unit) if self.status == 'playing' else [],
+                'heals': self.heals(unit) if self.status == 'playing' else []})
         return {'scenario': 'coop_' + self.scenario + '/v1', 'ruleset': self.ruleset,
                 'width': 15, 'height': 10,
                 'terrain': [[{'9': 'wall', '2': 'forest'}.get(terrain.get((x, y)), 'plain')

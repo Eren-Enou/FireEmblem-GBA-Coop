@@ -13,7 +13,9 @@ reconnection. **Actual two-PC Internet play remains unverified.** Campaign saves
 public matchmaking and advanced tactical parity are not implemented. Blue and
 Green now gain combat XP and level through the same player growth rules. See the
 [progression drill](docs/PROGRESSION.md) for a reproducible two-army level-up.
-Protocol v2 requires updating host and clients together.
+Blue and Green can also heal one another with real LT staves. The separate
+[Mutual Aid encounter](docs/HEALING.md) demonstrates frontliners protecting
+healers and cross-army support. Protocol v3 requires matching host and clients.
 [Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:

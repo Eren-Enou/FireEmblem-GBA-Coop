@@ -44,6 +44,17 @@ def scripted_step(connection, operation):
     return True
 
 
+def target_choice(unit, clicked, item_index):
+    """Same selection rule for mouse interaction and focused UI acceptance."""
+    if not 0 <= item_index < len(unit['inventory']):
+        return None
+    choice = {'item': unit['inventory'][item_index]['uid'], 'target': clicked['id']}
+    for action, field in (('heal', 'heals'), ('attack', 'attacks')):
+        if choice in unit[field]:
+            return action, choice
+    return None
+
+
 def run(connection, script=None, report=None, screenshot=None, timeout=45):
     import pygame
     pygame.init()
@@ -100,6 +111,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 selected = None
                 unit = None
             for event in pygame.event.get():
+                unit = units.get(selected)
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
@@ -131,21 +143,29 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                     else:
                         pos = [(mouse[0] - LEFT) // TILE, (mouse[1] - TOP) // TILE]
                         clicked = next((u for u in units.values() if u['pos'] == pos), None)
-                        if unit and unit['team'] == model.team and clicked and clicked['team'] == 'enemy':
-                            inventory = unit['inventory']
-                            if item_index < len(inventory):
-                                choice = {'item': inventory[item_index]['uid'], 'target': clicked['id']}
-                                if choice in unit['attacks']:
-                                    command('attack', unit=unit['id'], **choice)
+                        choice = target_choice(unit, clicked, item_index) if unit and clicked and unit['team'] == model.team else None
+                        if choice:
+                            action, args = choice
+                            command(action, unit=unit['id'], **args)
                         elif clicked:
                             selected, item_index = clicked['id'], 0
                         elif unit and unit['team'] == model.team and pos in unit['moves']:
                             command('move', unit=unit['id'], pos=pos)
+                    if unit:
+                        for i in range(len(unit['inventory'])):
+                            if pygame.Rect(670, 318 + i * 24, 320, 24).collidepoint(mouse):
+                                item_index = i
             if script is not None:
                 require(time.monotonic() - started < timeout, 'script_timeout')
                 require(not model.message.startswith('Rejected:'), model.message)
-                if index < len(script) and scripted_step(connection, script[index]):
-                    index += 1
+                if index < len(script):
+                    if script[index]['action'] == 'inspect':
+                        require(script[index]['unit'] in units, 'script_unknown_unit')
+                        selected, item_index = script[index]['unit'], 0
+                        index += 1
+                    elif scripted_step(connection, script[index]):
+                        index += 1
+            unit = units.get(selected)
 
             # Only original geometric tokens and system fonts are used here.
             screen.fill((19, 25, 37))
@@ -167,8 +187,10 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 cx, cy = LEFT + x * TILE + TILE // 2, TOP + y * TILE + TILE // 2
                 color = COLORS[current['team']] if not current['finished'] else (117, 127, 139)
                 pygame.draw.circle(screen, color, (cx, cy - 2), 13)
-                if unit and model.can_act and any(a['target'] == current['id'] for a in unit['attacks']):
-                    pygame.draw.circle(screen, (255, 125, 80), (cx, cy - 2), 19, 2)
+                choice = target_choice(unit, current, item_index) if unit and model.can_act and unit['team'] == model.team else None
+                if choice:
+                    color = (115, 255, 215) if choice[0] == 'heal' else (255, 125, 80)
+                    pygame.draw.circle(screen, color, (cx, cy - 2), 19, 2)
                 if current['id'] == selected:
                     pygame.draw.circle(screen, (255, 246, 204), (cx, cy - 2), 17, 2)
                 text(current['id'].split('_')[-1][0:1], cx - 5, cy - 11, (12, 23, 34))
@@ -191,10 +213,10 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 text('Finished' if unit['finished'] else 'Moved' if unit['moved'] else 'Ready to move', 670, 278)
                 text(f"Tile {unit['pos']}", 670, 300)
                 for i, item in enumerate(unit['inventory']):
-                    text(f"{i+1}. {item['name']} ({item['uses']})", 670, 318 + i * 24)
+                    text(f"{'>' if i == item_index else ' '} {i+1}. {item['name']} ({item['uses']})", 670, 318 + i * 24)
                 text(f"Move: {unit['movement']} / {len(unit['moves'])} tiles", 670, 386)
-                text(f"Attack targets: {len(unit['attacks'])}", 670, 410)
-                text('Click outlined Red to attack', 670, 434)
+                text(f"Attack: {len(unit['attacks'])} Heal: {len(unit['heals'])}", 670, 410)
+                text('Mint: heal / orange: attack', 670, 434)
                 text('Moves commit immediately', 670, 458)
                 stats = list(unit['stats'].items())
                 for row in range(0, len(stats), 3):

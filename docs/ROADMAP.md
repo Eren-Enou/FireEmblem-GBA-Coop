@@ -89,6 +89,19 @@ durable saves, verified WAN play and full tactical/campaign parity remain open.
 - [x] Separate reproducible progression drill, three-process rendering and TLS smoke.
 - [ ] Two-human exploratory progression playtest; actual two-PC WAN remains unverified.
 
+## Phase 4B: allied healing (implemented and locally verified)
+
+- [x] Same-army and cross-army Heal/Mend using LT spell/target/combat systems.
+- [x] Protocol-v3 host validation of owner/phase/item/rank/uses/range/target/action.
+- [x] Real HP caps, durability, healing XP/level-ups and finished-action behavior.
+- [x] Selected-item mint healing targets, item-row selection and HP result text.
+- [x] Original Mutual Aid scenario: protected healers and useful cross-army support.
+- [x] Full legal supported victory; socket convergence/rejoin and three-process demo.
+- [ ] Two-human usability and private two-PC playtest remain unverified.
+
+Recommended next gameplay slice: personal Vulnerary use and item/action previews,
+with narrow native-engine commands and equivalent recovery/authority tests.
+
 ## Remaining Phase 4 tactical/campaign parity (not implemented)
 
 Implementation methods are now documented in
@@ -97,7 +110,7 @@ audit. These design tasks are complete; the mechanics/checkpoint gates below are
 
 - Independent persistent rosters, equipment and inventory management.
 - Recruitment, promotions and persistent ownership changes; core Green combat XP/growth is complete.
-- Healing, supports, trade, paired interactions and permadeath audits.
+- Broader item use/healing abilities, supports, trade, paired interactions and permadeath audits; Heal/Mend is complete.
 - Shared campaign saves with an explicit phase/event/RNG schema.
 - Chapter-boundary DTO first, then supported mid-map quiescent checkpoints;
   validated restore, atomic generation commit, corruption recovery and migrations.

@@ -1,10 +1,10 @@
-"""Version 2, bounded JSON only. No engine imports or executable serialization."""
+"""Version 3, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
 import math
 import re
 
-VERSION = 2
+VERSION = 3
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -87,7 +87,7 @@ def validate_request(value):
     elif kind == 'command':
         action = value.get('action')
         extra = {'move': ('unit', 'pos'), 'attack': ('unit', 'item', 'target'),
-                 'wait': ('unit',), 'end_phase': ()}
+                 'heal': ('unit', 'item', 'target'), 'wait': ('unit',), 'end_phase': ()}
         require(type(action) is str and action in extra, 'unknown_action')
         fields(value, ('v', 'type', 'session', 'id', 'revision', 'phase', 'digest', 'action') + extra[action])
         for key in ('session', 'id', 'phase', 'digest'):
@@ -129,7 +129,7 @@ def validate_state(value):
     for unit in value['units']:
         fields(unit, ('id', 'name', 'team', 'pos', 'hp', 'max_hp', 'dead', 'finished',
                       'moved', 'attacked', 'movement', 'level', 'exp', 'stats', 'wexp', 'mana', 'max_mana',
-                      'inventory', 'moves', 'attacks'))
+                      'inventory', 'moves', 'attacks', 'heals'))
         string(unit['id'])
         string(unit['name'])
         require(unit['id'] not in ids)
@@ -171,14 +171,15 @@ def validate_state(value):
         require(type(unit['moves']) is list and len(unit['moves']) <= 4096)
         for pos in unit['moves']:
             position(pos, value['width'], value['height'])
-        require(type(unit['attacks']) is list and len(unit['attacks']) <= 2000)
-        for attack in unit['attacks']:
-            fields(attack, ('item', 'target'))
-            integer(attack['item'])
-            string(attack['target'])
-            require(attack['item'] in {i['uid'] for i in unit['inventory']})
+        for kind in ('attacks', 'heals'):
+            require(type(unit[kind]) is list and len(unit[kind]) <= 2000)
+            for choice in unit[kind]:
+                fields(choice, ('item', 'target'))
+                integer(choice['item'])
+                string(choice['target'])
+                require(choice['item'] in {i['uid'] for i in unit['inventory']})
     for unit in value['units']:
-        require(all(a['target'] in ids for a in unit['attacks']))
+        require(all(choice['target'] in ids for kind in ('attacks', 'heals') for choice in unit[kind]))
     return value
 
 

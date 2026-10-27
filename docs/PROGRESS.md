@@ -1,6 +1,78 @@
 # Progress - October 27, 2026
 
-## Current milestone: Phase 4A cooperative character progression
+## Current milestone: Phase 4B cooperative healing
+
+### Implemented
+
+- Protocol **v3** adds the strict `heal(unit, item, target)` command and required
+  per-unit legal healing hints. Matching host/clients are required; v1/v2 reject.
+  The host revalidates army/phase, actor action state, owned item instance,
+  class/rank/availability/charges, range and eligible live ally before mutation.
+- Native LT Heal/Mend spells provide targeting, HP caps, durability, XP, weapon
+  XP and action completion. Both same-army directions and both cross-army
+  directions work without ownership transfer. No engine files or healing solver
+  were added or changed. Non-equippable staves are passed directly to native
+  combat rather than equipped. Arbitrary item use is outside this command.
+- The pygame client selects inventory rows by click or number, shows mint healing
+  and orange attack targets for the selected item, and sends the matching action
+  when an eligible ally is clicked. Results show restored HP, charges, XP/levels
+  and stats using existing authoritative projections.
+- Separate original `healing_demo.py` encounter: two injured frontline fighters,
+  two Clerics, two choke points and three normal pursuing Red fighters. Cross-army
+  allocation keeps both fronts supported; positions, healing actions and charges
+  matter. Standard rout/elimination events remain. Training, progression and
+  shipped projects are unchanged. See [HEALING.md](HEALING.md) for launch, fixture
+  values and tested tactics.
+
+### Executed verification
+
+- **154 tests passed in 169.261 seconds**: 11 new healing authority/network/UI/
+  graphical-process tests plus all 143 selected Phase 4A/earlier regressions.
+  Includes normal full-battle victory/defeat, progression, TLS, engine movement,
+  save round trip and XP/level timing checks. Full repository suite not run.
+- New checks cover Blue/Green same- and cross-army healing, capped HP, Heal/Mend
+  uses/XP/ranks, wrong army/phase/item/range/target, exhausted/unavailable/action-
+  spent actors, duplicate/stale/forged commands, full host/client packet equality,
+  live rejoin without replay and actual subsequent combat.
+- Seed-0 full healing battle reached shared **victory at revision 18, turn 3,
+  six heals** through normal commands; both clients matched every publication.
+  A real Red round with support leaves both captains healthier than without it.
+- After refreshing selection per queued UI event, focused UI and graphical
+  process checks passed again: **2 tests in 5.010 seconds**. Final explicit TLS
+  healing smoke used host **148472** and clients **53208/143124**, compared **13
+  identical snapshots through revision 12**, and completed cross-army support in
+  both directions, Red AI, level-ups and later combat. Ignored evidence is at
+  `artifacts/network-smoke/run-c98a32bc/`; state digest:
+  `da3371138a505c247db4f4c441481e315ff32e3aca0a4e564b80b2c4be6c1391`.
+- Final TLS Blue render and earlier render at `artifacts/network-smoke/run-ece2cd09/`
+  were visually inspected: TLSv1.3, healer level/XP, HP/stats/weapon XP, Heal uses,
+  mint ally outlines and both level notices render without column overlap.
+  Scripts exercise real model/command/rendering boundaries, not human mouse use.
+- Publication audit passed: **19 staged text files**, **8 Python syntax checks**
+  and **84 resolving local links**. No matching credential signatures, engine
+  changes, assets, environments or local outputs are staged. Original licensing/
+  attribution, resources, dependencies and both prior fixtures are unchanged.
+  The first link-check attempt treated an inherited root-relative README image
+  as a Windows drive path; resolving it from the repository root passed. This
+  scoped audit is not a historical asset-rights or full secret/security review.
+
+### Failures resolved and remaining limits
+
+- Initial test assumptions used an occupied movement destination, the wrong
+  native Staff D threshold and assumed a particular Red damage target. Tests now
+  use legal free tiles, database rank requirements and actual deterministic
+  engine outcomes. A naive support tactic starved Green; the separate encounter
+  and cross-army support allocation now yield the tested legitimate victory.
+  Native healing/combat formulas and canonical fixtures were not altered.
+- Separate-PC/WAN and two-human exploration remain unverified. Other staves,
+  scripted item prompts, trading, promotions, persistence and matchmaking remain
+  unimplemented. The installed engine's sample UI/audio/icons still require an
+  asset audit before redistribution. There is no blocker to this local milestone.
+- Next recommended gameplay milestone: limited personal consumables, beginning
+  with Vulnerary, with item/action previews and equivalent authority/recovery
+  tests. See [ROADMAP.md](ROADMAP.md) for the broader campaign gates.
+
+## Previous milestone: Phase 4A cooperative character progression
 
 ### Implemented and verified
 

@@ -1,4 +1,4 @@
-# Tactical contract - version 2 with cooperative progression
+# Tactical contract - version 3 with allied healing
 
 This is a **live training-map session**, not a campaign-save format or a verified
 Internet service. It supports loopback plaintext or optional verified TLS with
@@ -52,7 +52,7 @@ game-over screens. All further tactical commands then reject as session finished
   TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
   hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
-All messages have integer `v: 2` and a string `type`. Initial responses:
+All messages have integer `v: 3` and a string `type`. Initial responses:
 
 | Message | Other fields | Meaning |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ A `command` requires these exact common fields:
 
 | Field | Type / constraint |
 | --- | --- |
-| `v`, `type` | Integer 2, string `command` |
+| `v`, `type` | Integer 3, string `command` |
 | `session` | Current host-generated session ID from the state packet |
 | `id` | 1–64 ASCII letters, digits, `_` or `-`; unique per army for this host session |
 | `revision` | Nonnegative integer copied from the current authoritative packet |
@@ -81,12 +81,13 @@ A `command` requires these exact common fields:
 | --- | --- | --- |
 | `move` | `unit`: ID, `pos`: integer `[x,y]` | Active army owns a living, selectable, unfinished unit; has not moved; destination is reachable using current LT movement/terrain budget, unoccupied and in bounds; path cost rechecked. Runs LT Move/movement states. |
 | `attack` | `unit`: ID, `item`: inventory UID, `target`: unit ID | Active army owns the available unit; weapon is actually in its inventory, equippable, available and usable; LT target/range/line-of-sight rules allow the enemy. Runs LT SimpleCombat through the existing combat state, including counters, RNG, HP, durability, death and events. |
+| `heal` | `unit`: ID, `item`: owned UID, `target`: unit ID | Active army owns a living, selectable, unfinished actor that has not attacked; owned Heal/Mend spell passes LT availability/class/rank/charges, single-target restrictions and actual target-system range/eligibility. Target must be a live ally. Runs native spell combat without equipping a staff, including HP caps, durability, XP and action consumption. |
 | `wait` | `unit`: ID | Active army owns the available unit. Runs normal actively-chosen LT wait and its events. |
 | `end_phase` | None | Requester owns the current phase. Runs existing endstep/turn-change/upkeep states. Blue passes to Green; Green passes through authoritative Red AI to the next Blue turn. |
 
-The host independently computes legality; client movement/attack hints are not
+The host independently computes legality; client movement/attack/heal hints are not
 trusted. Payloads cannot supply damage, HP, a path, random rolls, ownership or an
-event script. Movement is committed immediately, once per unit phase; v2 has no
+event script. Movement is committed immediately, once per unit phase; v3 has no
 move-preview cancellation, canto commands, abilities, trading or arbitrary items.
 
 Before applying a command the host also checks both seats, session, request ID,
@@ -96,7 +97,7 @@ duplicate rejects rather than rerunning the action. The per-army request budget
 is 10,000 to bound this memory; restart the demo for a new session afterward.
 
 `reject` contains `v`, `type`, `id`, `code`, `revision`. Representative codes are
-`not_owner`, `wrong_phase`, `illegal_move`, `illegal_attack`, `unit_unavailable`,
+`not_owner`, `wrong_phase`, `illegal_move`, `illegal_attack`, `illegal_heal`, `unit_unavailable`,
 `duplicate_command`, `stale_revision`, `state_mismatch`, `stale_phase`,
 `peer_disconnected`, `wrong_session` and `session_finished`. Expected rejections
 do not change simulation, revision or RNG. Clients do not automatically replay a
@@ -117,35 +118,43 @@ Both clients receive the exact same `state` packet:
 
 | Field | Contents |
 | --- | --- |
-| `v`, `type` | Integer 2, string `state` |
+| `v`, `type` | Integer 3, string `state` |
 | `session`, `revision` | Session ID and monotonically increasing accepted-command revision |
 | `digest` | SHA-256 of canonical `state` JSON only: sorted dictionary keys, compact separators, UTF-8, no non-finite values |
 | `state` | Schema-validated training-map projection described below |
 | `result` | Null initially; otherwise command `id`, host-bound `team`, `action`, and a bounded authoritative outcome `summary` |
 
-The projection contains `scenario: coop_training/v1`, a ruleset fingerprint,
+The projection contains a versioned `scenario` ID, a ruleset fingerprint,
 map width/height/terrain, objective text, phase, turn, status, combat/growth/other
 RNG state plus seed, and a stable ID-sorted unit list. Each unit includes ID/name,
 team, position or null, current/max HP, dead/finished/moved/attacked flags,
 movement remaining, level/XP, stats, weapon XP, mana/max mana, inventory UIDs/names/durability, and advisory
-legal move/attack choices. The fingerprint hashes authoritative engine/co-op
+legal move/attack/heal choices. The fingerprint hashes authoritative engine/co-op
 Python files and the installed default project's JSON database. Clients need no
 matching local engine/assets because they only present state; both must see the
 same session and fingerprint. Digests check this **projection**, not every LT
 internal registry, skill, party, event stack or campaign-save field.
 
-Version 2 unit additions are `mana` and `max_mana` (integers 0-10000,
+The progression fields introduced in v2 and retained in v3 are `mana` and `max_mana` (integers 0-10000,
 current <= maximum), plus `wexp` (at most 64 weapon IDs mapped to nonnegative,
 finite decimal strings <= 10000, at most 64 characters each). For example,
 `"Axe":"32.5"` preserves fractional engine modifiers without admitting JSON float
 payloads. These are read-only projections. Clients cannot submit XP, levels,
 stats, mana or weapon-XP changes; unknown command fields reject. v1 handshakes and
-packets reject rather than silently losing progression data. Use matching v2
-host/clients. Scenario IDs remain `coop_training/v1` or `coop_progression/v1`;
+packets reject rather than silently losing progression data. Use matching v3
+host/clients. Version 3 adds a required `heals` choice list with the same strict
+`{item,target}` schema and inventory/target-ID checks as `attacks`. The new `heal`
+command has the exact same IDs/base fields as attack; it accepts no amount, HP,
+XP, team or other effect data. Only Heal/Mend single-target spells are supported.
+There is no generic Use, potion, revive, AoE, sequence, enemy-healing or ownership
+transfer capability. Moving before healing is allowed; healing consumes the
+normal action and blocks another move/attack/heal. Rejections preserve state/RNG.
+Host/clients must all use v3; v1/v2 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`;
 scenario version and wire version are separate.
 
 Authoritative result summaries place XP changes, level-ups and stat gains before
-ordinary combat details. The client computes presentation-only differences for
+ordinary combat details; healing results first identify actor, target and HP
+recovery. The client computes presentation-only differences for
 a bounded growth history. Resync/rejoin only restores state, never runs rewards.
 Random/dynamic level-up rolls derive from stable unit ID, internal level and host
 seed; unchanged global growth-stream state does not mean a level-up was skipped.
@@ -179,13 +188,13 @@ Restart and inspect the host log; persistent crash recovery is future work.
 
 ## Liveness and bounded private-session service (Phase 3A)
 
-Use the same current client/host commit. Version 2 adds weapon XP and mana fields to every unit;
+Use the same current client/host commit. Current v3 includes weapon XP/mana and required healing choices on every unit;
 clients must understand both those fields and the existing ping/pong controls. Older
 clients must update rather than silently disabling liveness checks.
 
-- After welcome, the host sends `{v:2,type:"ping",nonce:N}` every five seconds
+- After welcome, the host sends `{v:3,type:"ping",nonce:N}` every five seconds
   when no challenge is outstanding. The client reader answers
-  `{v:2,type:"pong",nonce:N}` immediately, independently of pygame polling.
+  `{v:3,type:"pong",nonce:N}` immediately, independently of pygame polling.
   Host nonces start at one and increase per connection. Only the outstanding
   nonce is accepted. Unknown fields, booleans and unsolicited/replayed pong close
   the connection. Ordinary messages cannot substitute for the challenge response.
@@ -219,7 +228,7 @@ clients must update rather than silently disabling liveness checks.
   Connection failure clears command readiness and leaves the last board visible.
 
 This contract is deliberately limited to the test map. Persistent campaigns,
-deployment, recruitment, promotions, allied trades/healing, persistent rosters, advanced tactical
+deployment, recruitment, promotions, allied trades/advanced healing, persistent rosters, advanced tactical
 parity and verified Internet play remain later milestones. Core Green combat
 XP/level/growth parity is implemented as described in [PROGRESSION.md](PROGRESSION.md). Version the contract explicitly
 when expanding these fields/actions; do not treat this projection as a safe

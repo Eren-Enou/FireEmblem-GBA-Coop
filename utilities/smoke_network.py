@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def run_smoke(output, tls=False, progression=False):
+def run_smoke(output, tls=False, progression=False, healing=False):
+    if progression and healing:
+        raise ValueError("Choose one smoke scenario")
     folder = Path(output).resolve() / ('run-' + uuid.uuid4().hex[:8])
     folder.mkdir(parents=True)
     blue = [{'action': 'advance', 'unit': 'Blue_Captain'},
@@ -33,6 +35,22 @@ def run_smoke(output, tls=False, progression=False):
                  {'action': 'attack', 'unit': 'Green_Captain', 'item': 102, 'target': 'Red_2'},
                  {'action': 'wait', 'unit': 'Green_Guard'}, {'action': 'end_phase'},
                  {'action': 'wait_for', 'phase': 'other', 'turn': 2}]
+    if healing:
+        blue = [{'action': 'heal', 'unit': 'Blue_Healer', 'item': 101, 'target': 'Green_Captain'},
+                {'action': 'wait', 'unit': 'Blue_Captain'}, {'action': 'end_phase'},
+                {'action': 'wait_for', 'phase': 'player', 'turn': 2},
+                {'action': 'attack_nearest', 'unit': 'Blue_Captain'},
+                {'action': 'heal', 'unit': 'Blue_Healer', 'item': 101, 'target': 'Green_Captain'},
+                {'action': 'end_phase'}, {'action': 'wait_for', 'phase': 'player', 'turn': 3},
+                {'action': 'inspect', 'unit': 'Blue_Healer'}]
+        green = [{'action': 'wait_for', 'phase': 'other', 'turn': 1},
+                 {'action': 'heal', 'unit': 'Green_Healer', 'item': 103, 'target': 'Blue_Captain'},
+                 {'action': 'wait', 'unit': 'Green_Captain'}, {'action': 'end_phase'},
+                 {'action': 'wait_for', 'phase': 'other', 'turn': 2},
+                 {'action': 'attack_nearest', 'unit': 'Green_Captain'},
+                 {'action': 'heal', 'unit': 'Green_Healer', 'item': 103, 'target': 'Blue_Captain'},
+                 {'action': 'end_phase'}, {'action': 'wait_for', 'phase': 'player', 'turn': 3},
+                 {'action': 'inspect', 'unit': 'Green_Healer'}]
     processes, logs = [], []
 
     def launch(name, *args):
@@ -50,8 +68,8 @@ def run_smoke(output, tls=False, progression=False):
             from utilities.create_tls_identity import create_identity
             certificate, key = create_identity(folder / 'tls')
             options = ['--tls-cert', str(certificate), '--tls-key', str(key), '--server-name', 'localhost']
-        if progression:
-            options += ['--scenario', 'progression']
+        if progression or healing:
+            options += ['--scenario', 'healing' if healing else 'progression']
         host = launch('host', 'host', '--port', '0', '--session-dir', str(folder / 'credentials'), *options)
         deadline = time.monotonic() + 30
         while not all((folder / 'credentials' / (name + '.json')).exists() for name in ('blue', 'green')):
@@ -83,9 +101,9 @@ def run_smoke(output, tls=False, progression=False):
         packets = reports[0]['observed']
         assert [p['revision'] for p in packets] == list(range(len(packets)))
         final = reports[0]['final']
-        assert final['state']['turn'] == 2 and final['state']['phase'] == 'other'
+        assert (final['state']['turn'], final['state']['phase']) == ((3, 'player') if healing else (2, 'other'))
         for team in ('player', 'other'):
-            if not progression:
+            if not (progression or healing):
                 assert any(p['result'] and p['result']['team'] == team and p['result']['action'] == 'move' for p in packets)
             combats = [i for i, p in enumerate(packets) if p['result'] and
                        p['result']['team'] == team and p['result']['action'] == 'attack']
@@ -106,9 +124,25 @@ def run_smoke(output, tls=False, progression=False):
                 assert grown['level'] == 2 and grown['stats']['STR'] > old['stats']['STR']
                 assert grown['max_hp'] > old['max_hp']
                 assert any(p['result'] and nid + ': XP' in p['result']['summary'] and 'LEVEL UP' in p['result']['summary'] for p in packets)
+        if healing:
+            for team in ('player', 'other'):
+                uses = [i for i, p in enumerate(packets) if p['result'] and
+                        p['result']['team'] == team and p['result']['action'] == 'heal']
+                assert uses, 'No healing for ' + team
+                cross = False
+                for i in uses:
+                    before = {u['id']: u for u in packets[i-1]['state']['units']}
+                    after = {u['id']: u for u in packets[i]['state']['units']}
+                    restored = [key for key in before if after[key]['hp'] > before[key]['hp']]
+                    assert restored, 'Healing did not restore HP'
+                    cross |= any(before[key]['team'] != team for key in restored)
+                    healer = next(u for u in after.values() if u['team'] == team and 'Healer' in u['id'])
+                    assert healer['inventory'] != before[healer['id']]['inventory']
+                assert cross, 'No cross-army healing for ' + team
+                assert after[healer['id']]['level'] == 2
         summary = {'host_pid': host.pid, 'client_pids': [r['pid'] for r in reports],
                    'revision': final['revision'], 'digest': final['digest'],
-                   'snapshots_compared': len(packets), 'tls': tls, 'progression': progression, 'folder': str(folder)}
+                   'snapshots_compared': len(packets), 'tls': tls, 'progression': progression, 'healing': healing, 'folder': str(folder)}
         (folder / 'result.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
         return summary
     finally:
@@ -136,5 +170,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', default=str(ROOT / 'artifacts/network-smoke'))
     parser.add_argument('--tls', action='store_true', help='Use generated identity and verified TLS clients')
     parser.add_argument('--progression', action='store_true', help='Verify both armies leveling in the separate growth drill')
+    parser.add_argument('--healing', action='store_true', help='Verify cross-army healing and subsequent combat')
     args = parser.parse_args()
-    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.progression)))
+    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.progression, args.healing)))

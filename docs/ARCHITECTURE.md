@@ -1,5 +1,36 @@
 # Architecture and original engine assessment
 
+## Phase 4B allied healing
+
+`Simulation.heals` enumerates owned inventory spells from LT's `get_spells`,
+restricted to trusted single-target Heal/Mend prefabs. Existing availability
+hooks enforce staff class/rank, charges and skill restrictions; `get_valid_targets`
+enforces range, fog/line-of-sight and component target restrictions. An explicit
+live-ally guard prevents enemy targeting. Ownership/phase/action checks remain
+in the common command path. The host re-enumerates legality before mutation.
+
+Accepted `heal` uses `interaction.start_combat(skip=True)`, just like the existing
+attack adapter, but does **not** equip a staff: native Spell is not equippable.
+LT handles equation healing, HP caps, uses, weapon XP, normal XP/level-ups,
+finished action and events. No second solver, health mutation/reward formula,
+new inventory architecture or native engine edit was added. Command lock,
+revision/digest, duplicate rejection, failure boundary and TLS remain unchanged.
+
+Protocol v3 adds `heal(unit,item,target)` and read-only `heals` choices per unit.
+The client cannot send amounts or stats. Mint target rings identify the selected
+staff's legal allies; orange rings identify selected weapon attacks. Item rows
+and number keys choose the instance. Clicking an eligible ally heals; otherwise
+clicking a unit inspects it. Host results explicitly show recovered HP and
+charges, with existing growth notices. Local `inspect` smoke steps affect only
+presentation, not commands or authority.
+
+`healing_demo.py` clones the original in-memory map/classes and adds two walls
+for protected support positioning. Each army has a wounded vanguard and a Cleric;
+healers start at 95 XP to demonstrate normal healing level-ups. Training and
+progression fixtures remain untouched. The native shared rout/defeat conditions
+and Pursue AI are retained; a real socket-driven battle wins without terminal
+shortcuts. Setup, tactical choices and limits: [HEALING.md](HEALING.md).
+
 ## Phase 4A character progression
 
 Three small engine integration points extend the existing opt-in policy:

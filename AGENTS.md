@@ -15,7 +15,9 @@ admission/rates, cooperative same-thread engine resolution and complete network
 battles are implemented and tested locally. Rejoin is a manual client relaunch;
 separate-PC Internet play remains unverified. Phase 4A adds human-army XP/mana
 eligibility and player growth selection, real fixed/random/dynamic combat level-ups,
-protocol-v2 weapon XP/mana projections and a separate progression drill. Campaign
+weapon XP/mana projections and a separate progression drill. Phase 4B adds
+protocol-v3 Heal/Mend staff commands, allied healing hints/UI and the separate
+Mutual Aid scenario. Campaign
 saves and full tactical parity are not implemented; concrete engine-based methods and gates are documented.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
@@ -63,7 +65,13 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   caps, growth generators and ExpState/actions as the only progression mechanism.
 - Keep the controlled `app/coop/progression_demo.py` drill separate from canonical
   training: 95 starting XP and 40 human HP are declared fixture initial conditions,
-  not rewards or normal campaign defaults. Protocol v2 requires matching clients.
+  not rewards or normal campaign defaults. Keep `healing_demo.py` separate too;
+  its injured frontliners, Cleric healers and two chokepoints are original fixture
+  conditions. Protocol v3 requires matching clients.
+- Healing is a narrow Heal/Mend spell slice: delegate availability/rank/range/
+  target restrictions and all effects to LT. Never equip non-equippable staves,
+  transfer target ownership, accept client healing amounts, or turn `heal` into
+  arbitrary item/event execution. No native engine edits were needed for Phase 4B.
 - Hold the session lock across cooperative engine-step yields and publication.
   Heartbeat/read tasks may run between steps but must never access engine state.
   Do not put LT simulation in independent threads or automatically replay a
