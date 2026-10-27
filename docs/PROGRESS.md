@@ -1,6 +1,83 @@
 # Progress — October 27, 2026
 
-## Current milestone: Phase 2 local network multiplayer
+## Current milestone: Internet path, campaign-save and parity methods
+
+### Implemented and verified
+
+- Optional TLS transport with certificate/name verification before sending army
+  credentials, TLS 1.2 minimum, explicit bind/advertise options, and private TLS
+  join invitations. Plaintext remains loopback-only, including an actual-peer
+  address check on local plaintext clients. Tactical protocol remains v1.
+- Short-lived development identity setup using existing OpenSSL CLI; no extra
+  Python package installed. Keys/certificates/invitations remain local ignored
+  files; the helper refuses overwrites. Windows ACL hardening remains open.
+- Real TLS socket tests for valid moves/rejoin, wrong name/untrusted identity
+  failing before any hello, remote-plaintext rejection, and non-TLS traffic
+  rejection on the TLS listener.
+- One actual host plus two independently rendering TLS clients moved, attacked
+  and passed turns through Red AI: 10 identical snapshots through revision 9.
+  Explicit smoke run recorded host PID 163636 and client PIDs 160196/146648.
+- Fixed Windows smoke cleanup to terminate its owned process trees before
+  closing logs. The first TLS process test exposed a locked host log after
+  stopping only the venv launcher; rerun passed after the fix.
+- Standalone TLS suite: **8 passed in 9.150 seconds**. Final combined suite:
+  **103 passed in 55.232 seconds** (8 TLS + 22 prior network + 73 selected engine,
+  hot-seat, AI, movement, canto and save regressions). Full repository suite was
+  not run. No upstream engine, licensing or binary-asset changes were needed.
+- Additional policy recheck passed 3 tests in 0.075 seconds after adding explicit
+  coverage for a localhost lookup whose actual peer is non-loopback. The TLS
+  client render was inspected and showed negotiated TLSv1.3.
+- Staged publication audit passed: 18 Python/Markdown files, valid Python syntax,
+  43 resolving local document links, no matching credential signatures/new media,
+  no tracked local artifacts, unchanged engine and original license files. This
+  scoped check does not establish historical asset rights or a full secret audit.
+
+### Concrete Internet path
+
+[INTERNET_PLAY.md](INTERNET_PLAY.md) compares connectivity routes, chooses a
+private-overlay-plus-TLS first pilot, gives identity/host/client procedures and
+defines evidence required from two Windows PCs on different networks. Direct
+public hosting is a later gated option; admission/rate limits, heartbeats and
+silent-loss detection, long-resolution responsiveness, credential lifecycle and
+load tests are still required. No router/firewall policy was modified, VPN account
+created, public listener deployed or two-PC WAN session verified by this work.
+
+### Campaign and tactical methods with evidence
+
+[CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md) defines stable army ownership,
+separate persistent parties, strict chapter-boundary DTO checkpoints followed by
+supported mid-map barriers, fresh-process validated reconstruction, all RNG
+streams, atomic file generations, corruption recovery, migrations and new session
+epochs. It maps XP/growth, equipment/abilities, healing/trading, recruitment,
+promotions, persistence, deployment/story/objectives to engine reuse and explicit
+network acceptance gates. These are **design methods**, not implemented mechanics.
+
+The reproducible `utilities/audit_campaign_readiness.py` probe verified:
+
+- Identical adjacent combat from fresh seed-0 simulations caused 10 HP damage
+  and 10 counterdamage and used one axe charge for both armies. Blue gained
+  0 -> 10 XP; Green remained 0 -> 0. This matches the inspected Blue-only XP gate.
+- All four human demo units are nonpersistent and use the same sample party.
+- The engine save dictionary fails direct JSON encoding on a set. Its top-level
+  fields contain no explicit phase and only `current_random_state` for RNG.
+- Existing restore paths accept richer component/action state than a bounded
+  external checkpoint should allow. Methods specify trusted-prefab reconstruction
+  and whitelisted state instead of loading arbitrary engine dictionaries/pickle.
+
+The diagnostic report and TLS smoke outputs are ignored under `artifacts/`.
+No campaign save/restore, Green progression fix, healing/trade/promotion command,
+multi-chapter game or Internet play capability is claimed as implemented.
+
+### Remaining gates / next action
+
+Next: two-human private two-PC TLS pilot and a bounded liveness/admission slice.
+Then deliver XP/growth parity over network combat, introduce persistent original
+two-party/two-chapter fixtures and implement chapter-boundary checkpoint A using
+the documented schema/restore gates. Inherited asset rights still need an audit
+before distribution. External WAN access/player evidence is unavailable in this
+automated session; it is a pilot gate, not a passed test.
+
+## Earlier Phase 2 local network multiplayer
 
 Implemented a working vertical slice extending the existing hot-seat map:
 

@@ -6,6 +6,12 @@ the host resolves movement, combat, inventory durability, objectives and Red AI.
 Both clients receive verified, revisioned state. This is local networking;
 internet play, campaign saves and full Green progression parity are not ready.
 
+An opt-in verified TLS transport now provides the next step toward remote play.
+See the [Internet-play path](docs/INTERNET_PLAY.md) for identity setup, a private
+two-PC pilot procedure and the remaining public-service gates. WAN play is not
+yet verified. [Campaign saves and tactical parity](docs/CAMPAIGN_AND_PARITY.md)
+have source-based implementation methods; they are not implemented features.
+
 Run these in three terminals from this repository root:
 
 ```powershell

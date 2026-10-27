@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def run_smoke(output):
+def run_smoke(output, tls=False):
     folder = Path(output).resolve() / ('run-' + uuid.uuid4().hex[:8])
     folder.mkdir(parents=True)
     blue = [{'action': 'advance', 'unit': 'Blue_Captain'},
@@ -36,7 +36,12 @@ def run_smoke(output):
         return process
 
     try:
-        host = launch('host', 'host', '--port', '0', '--session-dir', str(folder / 'credentials'))
+        options = []
+        if tls:
+            from utilities.create_tls_identity import create_identity
+            certificate, key = create_identity(folder / 'tls')
+            options = ['--tls-cert', str(certificate), '--tls-key', str(key), '--server-name', 'localhost']
+        host = launch('host', 'host', '--port', '0', '--session-dir', str(folder / 'credentials'), *options)
         deadline = time.monotonic() + 30
         while not all((folder / 'credentials' / (name + '.json')).exists() for name in ('blue', 'green')):
             if host.poll() is not None or time.monotonic() > deadline:
@@ -83,13 +88,20 @@ def run_smoke(output):
                                         packets[ai_index]['state']['units']) if a['team'] == 'enemy')
         summary = {'host_pid': host.pid, 'client_pids': [r['pid'] for r in reports],
                    'revision': final['revision'], 'digest': final['digest'],
-                   'snapshots_compared': len(packets), 'folder': str(folder)}
+                   'snapshots_compared': len(packets), 'tls': tls, 'folder': str(folder)}
         (folder / 'result.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
         return summary
     finally:
         for process in reversed(processes):
             if process.poll() is None:
-                process.terminate()
+                if os.name == 'nt':
+                    # The venv executable can be a redirector with a child
+                    # interpreter. Stop our owned process tree, not just that
+                    # launcher, before closing logs/removing a test directory.
+                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                                   capture_output=True, timeout=10)
+                else:
+                    process.terminate()
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
@@ -102,5 +114,6 @@ def run_smoke(output):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', default=str(ROOT / 'artifacts/network-smoke'))
+    parser.add_argument('--tls', action='store_true', help='Use generated identity and verified TLS clients')
     args = parser.parse_args()
-    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output)))
+    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls)))

@@ -1,5 +1,18 @@
 # Assessment: smallest local second-army extension
 
+**Internet-path foundation:** `app/coop/security.py` adds optional verified TLS
+under the same tactical v1 contract. Remote plaintext is rejected; configured TLS
+endpoints validate the host certificate/name before army credentials are sent.
+The bind/advertise/invitation setup and still-open WAN/admission/liveness gates
+are in [INTERNET_PLAY.md](INTERNET_PLAY.md). Three-process TLS gameplay is tested
+locally; no two-PC Internet result is claimed.
+
+The save/ownership/XP audit now has reproducible diagnostics in
+`utilities/audit_campaign_readiness.py`. Source-based methods for persistent
+armies, validated DTO checkpoints, fresh-process restore, growth/XP and full
+command parity are in [CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md). These
+are methods and acceptance gates, not implemented campaign features.
+
 **Current Phase 2 addition:** [NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md) specifies
 the implemented command/state boundary. `app/coop/simulation.py` drives the
 existing LT actions/states in one headless authoritative process. `server.py`

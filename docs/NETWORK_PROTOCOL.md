@@ -1,7 +1,8 @@
 # Phase 2 tactical contract — version 1
 
-This is a **live, local training-map session**, not a campaign-save format or an
-internet service. The executable validators live in
+This is a **live training-map session**, not a campaign-save format or a verified
+Internet service. It supports loopback plaintext or optional verified TLS with
+explicit remote endpoint configuration. The executable validators live in
 [`app/coop/protocol.py`](../app/coop/protocol.py). Unknown versions, fields and
 actions are rejected. No network payload is passed to pickle, eval, event script
 execution, engine save restoration or Python object construction.
@@ -26,7 +27,8 @@ game-over screens. All further tactical commands then reject as session finished
 
 ## Framing and player assignment
 
-- TCP on `127.0.0.1` only. Default port 38670; port 0 selects an ephemeral port.
+- Plain TCP is loopback-only. Optional TLS allows explicit remote endpoint/bind
+  configuration; default remains `127.0.0.1:38670`. Port 0 selects an ephemeral port.
 - Every message is one UTF-8 JSON object followed by LF. Maximum frame size is
   262,144 bytes including LF. Duplicate JSON keys, floating-point numbers,
   non-finite numbers, excessive nesting and malformed/truncated frames reject.
@@ -35,15 +37,19 @@ game-over screens. All further tactical commands then reject as session finished
   Army identity comes from the host's credential lookup, never a claimed player
   or team field in a command. A seat allows one live connection.
 - Host-generated credentials go in ignored `artifacts/network/blue.json` and
-  `green.json`. They are not in snapshots, reports or console output. Protect
+  `green.json`. TLS invitations additionally include public `ca_pem` and expected
+  `server_name` under a `tls` object. They contain no host private key. TLS
+  certificate/name validation finishes before the client sends its token.
+  Credentials are not in snapshots, reports or console output. Protect
   these files with local account permissions; Windows ACL hardening is not part
   of this slice. Whoever has a credential has that army's capability.
 - Handshake timeout is 5 seconds; bounded outgoing writes also time out after
   5 seconds. Invalid framing/handshakes close that connection. Semantic command
   rejections leave a valid connection open.
-- This transport has **no TLS or server identity authentication**. Loopback is
-  enforced by both launchers. Do not expose it through port forwarding or a
-  public interface; internet transport/security remains Phase 3.
+- Plaintext has no server identity verification and cannot use remote endpoints.
+  Optional TLS uses required certificate validation, expected-name checking and
+  TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
+  hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
 All messages have integer `v: 1` and a string `type`. Initial responses:
 
@@ -152,6 +158,6 @@ Restart and inspect the host log; persistent crash recovery is future work.
 
 This contract is deliberately limited to the test map. Persistent campaigns,
 deployment, recruitment, promotions, allied trades/healing, full Green leveling
-parity and internet play remain later milestones. Version the contract explicitly
+parity and verified Internet play remain later milestones. Version the contract explicitly
 when expanding these fields/actions; do not treat this projection as a safe
 replacement for complete engine save/load.

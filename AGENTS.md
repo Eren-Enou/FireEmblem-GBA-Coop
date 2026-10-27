@@ -9,15 +9,18 @@ The goal is two independent online clients, each owning an allied army against
 shared enemy AI, followed by cooperative campaign progression. Current completed
 scope includes hot-seat play and a loopback network vertical slice: one LT host,
 two independent graphical clients, Blue -> Green -> Red AI, versioned commands,
-authoritative state and live-host reconnect/resync. Internet play, campaign saves
-and full tactical parity remain unimplemented. Next: two-person exploratory
-testing and a reviewed internet-connectivity/security design.
+authoritative state and live-host reconnect/resync. Optional verified TLS and
+remote endpoint configuration are implemented and tested locally; separate-PC
+Internet play remains unverified. Campaign saves and full tactical parity are
+not implemented; concrete engine-based methods and gates are documented.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
 [asset policy](docs/ASSET_POLICY.md) and [network contract](docs/NETWORK_PROTOCOL.md)
 before changing the prototype. These are the
 canonical project records; `docs/source/` remains upstream engine documentation.
+Read [Internet play](docs/INTERNET_PLAY.md) and
+[campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) for the next stages.
 
 ## Repository
 
@@ -50,10 +53,18 @@ canonical project records; `docs/source/` remains upstream engine documentation.
   combat solver or import the test harness into production. `simulation.py`
   adapts LT, `server.py` serializes authority, `protocol.py` validates JSON,
   `client.py` maintains verified state, and `view.py` presents it independently.
-- Networking is loopback-only in v1. Do not expose the plaintext bearer-token
-  service publicly or load remote data through pickle. Credential files and
+- Plaintext networking remains loopback-only. Remote endpoint configuration
+  requires TLS with certificate/name verification before army authentication;
+  never add an insecure fallback. Do not expose a public service before its
+  admission/liveness/security gates pass or load remote data through pickle. Credential files and
   process reports belong under ignored `artifacts/`. A state projection is not
   a campaign save; follow the versioned contract when extending it.
+- Identity generation and TLS tests require OpenSSL CLI on PATH (setup/test only).
+  Keep generated certificates/keys and army invitations out of Git. Do not install
+  VPN software or alter OS/router policy as an incidental test action.
+- Do not treat the current generic demo roster as persistent campaign data or
+  broaden all Blue-only checks indiscriminately. Follow the audited ownership,
+  human-participant, ally and persistent-roster distinctions in the methods.
 - Add engine-harness tests for ownership and tactical behavior. Follow docs/TESTING.md
   for the targeted checks. Record actual outcomes and unresolved failures.
 - Do not add networking until local acceptance checks pass; never describe

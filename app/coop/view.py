@@ -161,6 +161,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 pygame.draw.rect(screen, (15, 20, 25), (cx - 15, cy + 14, 30, 4))
                 pygame.draw.rect(screen, (122, 225, 139), (cx - 15, cy + 14, 30 * current['hp'] // max(1, current['max_hp']), 4))
             text('COMMANDER', 670, 125, big=True)
+            text(connection.security, 670, 192)
             if state['status'] != 'playing':
                 text('Shared ' + state['status'], 670, 167)
             elif not model.can_act:

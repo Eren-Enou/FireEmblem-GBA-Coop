@@ -1,4 +1,4 @@
-"""Loopback-only TCP host. The event loop serializes all simulation mutation."""
+"""TCP/TLS host. The event loop serializes all simulation mutation."""
 import asyncio
 import hmac
 import logging
@@ -159,5 +159,9 @@ class Host:
             except OSError:
                 pass
 
-    async def listen(self, port=38670):
-        return await asyncio.start_server(self.handle, '127.0.0.1', port, limit=MAX_FRAME)
+    async def listen(self, port=38670, bind='127.0.0.1', tls_context=None):
+        from app.coop.security import validate_listener
+        validate_listener(bind, tls_context)
+        options = {'ssl': tls_context, 'ssl_handshake_timeout': 5,
+                   'ssl_shutdown_timeout': 5} if tls_context else {}
+        return await asyncio.start_server(self.handle, bind, port, limit=MAX_FRAME, **options)

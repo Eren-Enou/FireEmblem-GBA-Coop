@@ -87,11 +87,12 @@ class Model:
 
 
 class Connection:
-    def __init__(self, host, port, token):
-        # Phase 2 transport is intentionally local-only. No false internet claim.
-        require(host in ('127.0.0.1', 'localhost'), 'loopback_only')
+    def __init__(self, host, port, token, tls=None):
+        from app.coop.security import connect
         integer(port, 1, 65535)
-        self.socket = socket.create_connection((host, port), timeout=10)
+        # TLS validation completes before the hello can reveal a credential.
+        self.socket = connect(host, port, tls)
+        self.security = self.socket.version() if tls is not None else 'loopback plaintext'
         self.stream = self.socket.makefile('rb')
         self.model = Model()
         self.inbox = queue.Queue(maxsize=128)

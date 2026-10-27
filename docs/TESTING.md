@@ -1,5 +1,47 @@
 # Environment and verification
 
+## TLS Internet-path foundation and campaign-readiness audit
+
+Optional TLS uses standard Python `ssl`; generating identities and running TLS
+tests also require OpenSSL CLI on PATH. Existing local TCP tests do not require
+that tool. No additional Python dependency was installed. Identity helper accepts
+`--openssl PATH` for setup; use the binary's directory on PATH for the test suite.
+
+```powershell
+.venv\Scripts\python.exe -m unittest app.tests.test_network_tls -q
+.venv\Scripts\python.exe utilities/smoke_network.py --tls
+.venv\Scripts\python.exe utilities/audit_campaign_readiness.py
+```
+
+TLS tests cover verified sockets, wrong hostname/untrusted identity rejection
+before any credential hello, remote plaintext rejection, key-overwrite prevention,
+live-host TLS rejoin and the full three-process tactical smoke. Negative identity
+tests use disposable generated keys, never committed certificate/key fixtures.
+The smoke is still run on localhost; it is not evidence of a two-PC Internet game.
+
+The readiness audit uses two fresh engine simulations with identical combat
+class/weapon/enemy/position/seed and writes diagnostics to ignored
+`artifacts/campaign-readiness.json`. Observed XP was Blue 0 -> 10 versus Green
+0 -> 0, with matching 10 HP damage/counterdamage and 45 -> 44 weapon uses. It also
+reports nonpersistent demo rosters, the existing save dictionary's JSON failure,
+missing explicit phase and top-level RNG fields. It is not a campaign save.
+
+The Windows smoke helper stops its owned subprocess trees before closing logs;
+this fixes a file-lock/venv-redirector cleanup failure found during TLS testing.
+
+Full selected regression command for this milestone:
+
+```powershell
+.venv\Scripts\python.exe -m unittest app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip -q
+```
+
+Standalone TLS run: 8 passed in 9.150 seconds. Final combined run: **103 passed in
+55.232 seconds** (8 TLS, 22 existing network and 73 selected engine/hot-seat checks).
+TLS smoke compared 10 snapshots through revision 9. Separate-PC
+WAN connectivity, silent-loss heartbeat detection, rate/load behavior, actual
+campaign restore and full parity remain unverified/unimplemented as documented
+in [Internet play](INTERNET_PLAY.md) and [campaign methods](CAMPAIGN_AND_PARITY.md).
+
 ## Phase 2: local network play
 
 Use the same environment below; the new transport adds only Python standard
@@ -41,7 +83,8 @@ other player pauses until both reconnect. Host restart creates a fresh map and
 new credentials; there is no campaign persistence or host-restart recovery.
 Credential files are private local bearer capabilities, not public game assets.
 They and the process reports/screenshots are ignored under `artifacts/`. This
-launcher rejects non-loopback connections; internet play is **not** available.
+plain TCP mode rejects non-loopback connections. Optional TLS endpoint setup is
+described above; actual Internet play is **not yet verified**.
 See [the exact contract](NETWORK_PROTOCOL.md) for trust boundaries and limits.
 
 ### Automated network acceptance

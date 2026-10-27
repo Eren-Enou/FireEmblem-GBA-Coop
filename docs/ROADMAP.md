@@ -54,21 +54,35 @@ full menus/animations. Moves commit immediately; Red resolves atomically between
 human phases. Client reconnect needs a manual relaunch; host-restart recovery,
 durable saves, internet transport and full tactical/campaign parity remain open.
 
-## Phase 3: internet sessions (not started)
+## Phase 3: Internet path (TLS foundation implemented; WAN pilot unverified)
 
-- Document host/join setup and choose a connectivity strategy.
-- Review TLS/server identity and credential handling before public connectivity;
-  v1 loopback plaintext must not be exposed through forwarding.
-- Authenticate reconnects; retain results/snapshots by revision.
-- Test latency, dropped/duplicated traffic, disconnects, reconnects and malformed
-  commands before making internet-play claims.
+- [x] Verified TLS host/client contexts and expected-server-name checking before tokens.
+- [x] Opt-in endpoint/bind/advertise configuration; reject remote plaintext.
+- [x] Short-lived identity generation, private per-army TLS invitations and setup docs.
+- [x] Real TLS sockets: movement/rejoin and identity-failure checks before authentication.
+- [x] Three graphical processes over TLS; identical state through revision 9.
+- [x] Connectivity comparison, recommended private-overlay pilot and measurable gates
+  in [INTERNET_PLAY.md](INTERNET_PLAY.md).
+- [ ] Two Windows PCs on different networks complete the private pilot.
+- [ ] Heartbeats, result deadlines, admission/rate limits, credential lifecycle and
+  network responsiveness during long engine resolution.
+- [ ] Representative WAN latency/jitter, half-open connections and reconnect storms.
+- [ ] Public-host/relay connectivity design and operational/security review before exposure.
 
 ## Phase 4: tactical/campaign parity (not started)
+
+Implementation methods are now documented in
+[CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md), backed by a reproducible readiness
+audit. These design tasks are complete; the mechanics/checkpoint gates below are not.
 
 - Independent persistent rosters, equipment and inventory management.
 - Green experience/leveling, recruitment and ownership changes.
 - Healing, supports, trade, paired interactions and permadeath audits.
 - Shared campaign saves with an explicit phase/event/RNG schema.
+- Chapter-boundary DTO first, then supported mid-map quiescent checkpoints;
+  validated restore, atomic generation commit, corruption recovery and migrations.
+- Explicit host-owned army identities/two persistent parties; isogenic XP/growth
+  parity first, then network Equip/Use/Heal/Trade/Recruit/Promote/deployment slices.
 
 ## Phase 5: campaign integration (not started)
 
