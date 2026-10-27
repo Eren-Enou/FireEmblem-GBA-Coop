@@ -1,10 +1,11 @@
-# Two Banners: the first live cooperative campaign
+# Two Banners: cooperative campaign
 
 Phase 5A links two original chapters in one authoritative LT host session. Blue
 and Green have permanent characters and separate native parties. This is live
-continuity: stopping the host loses the campaign. There is no disk checkpoint,
-host-restart recovery, trading, recruitment, promotion, shop or deployment menu.
-All peers must run the same protocol-v4 version.
+continuity during battles, with Phase 5B [chapter-boundary checkpoints](CHECKPOINTS.md)
+for complete host shutdown/restart after Chapter 1. Mid-map saving, trading,
+recruitment, promotion, shops and deployment menus remain unsupported. All peers
+must run the same protocol-v5 version.
 
 ## Play locally
 
@@ -73,11 +74,18 @@ but `dead` remains authoritative and HP does not revive them. If either army
 loses all deployed characters, the shared defeat event ends the campaign.
 Casual revival and automatic death-to-convoy behavior remain outside this slice.
 
+Chapter 1 intermission is automatically checkpointed by the normal campaign
+host before either vote applies native cleanup. Wait for the saved confirmation
+before closing all processes. S saves/retries at this boundary. A save failure
+blocks Ready until a successful retry; see [CHECKPOINTS.md](CHECKPOINTS.md) for
+restore commands, compatibility, generation fallback and supported native state.
+
 The session lock covers both votes' mutations and the complete transition. The
 second vote publishes one revision only after reaching a human command boundary.
 No intermediate half-loaded map is broadcast. Unexpected lifecycle faults freeze
 the session; if no valid active level remains, clients receive the last committed
-board marked `fault`. There is no in-process rollback or crash recovery.
+board marked `fault`. There is no in-process rollback; recovery uses the last valid chapter-boundary
+checkpoint in a new host process.
 
 ## Chapters and tested tactics
 
@@ -113,13 +121,10 @@ Training, progression and Mutual Aid remain separate unchanged scenarios.
 Generated maps/tokens are original code; inherited UI/audio/icons still require
 an asset audit before a standalone release.
 
-## Next milestone: Phase 5B
+## Chapter-boundary recovery and next gates
 
-Implement chapter-boundary checkpoint A from
-[CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md). Define a strict, bounded JSON
-schema for native persistent state and ownership, all RNG streams, completed/
-next chapter and supported component state; validate before mutation. Write
-atomic generations with a previous-good fallback, test corruption/interrupted
-writes, and restore only at startup in a fresh host process with fresh invitations.
-Do not repurpose the public display snapshot or load remote pickle. Mid-map
-checkpoints and live-host load handoff should remain later work.
+Checkpoint A is now implemented for this campaign's Chapter 1 intermission;
+see [CHECKPOINTS.md](CHECKPOINTS.md) and actual [test results](TESTING.md).
+Next gates are a two-human/two-PC TLS recovery pilot and deliberate expansion of
+the supported native-state matrix. Mid-map checkpoints require a separate schema
+and quiescent event/phase/terrain contract; they are not implied by boundary saves.

@@ -92,6 +92,9 @@ class Session:
             self.simulation.fault = True
             # A partially applied command is never reported as a rejection with
             # an unchanged revision. Publish a terminal authoritative fault.
+        if (not self.simulation.fault and self.simulation.status == 'intermission' and
+                self.simulation.campaign.checkpoint['status'] == 'pending'):
+            self.simulation.save_checkpoint()
         self.revision += 1
         after = self.state_projection()
         changes = []
@@ -121,6 +124,7 @@ class Session:
             summary += '; CHAPTER: ' + after['campaign']['title']
         if after['status'] == 'intermission':
             summary += '; CHAPTER COMPLETE; both commanders must Ready to continue'
+            summary += '; ' + after['campaign']['checkpoint']['message']
         if after['status'] in ('victory', 'defeat'):
             summary += '; SHARED ' + after['status'].upper()
         deaths = [u['id'] for u in after['units'] if u['dead'] and not next(

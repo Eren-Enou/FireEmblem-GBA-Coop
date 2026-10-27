@@ -1,7 +1,7 @@
-# Tactical contract - version 4 with live campaign continuity
+# Tactical contract - version 5 with checkpoint status
 
-This is a **live tactical/campaign session**, not a disk-save format or a verified
-Internet service. It supports loopback plaintext or optional verified TLS with
+This is a **live tactical/campaign projection**. Checkpoint files use a separate
+native-state format; actual WAN play remains unverified. It supports loopback plaintext or optional verified TLS with
 explicit remote endpoint configuration. The executable validators live in
 [`app/coop/protocol.py`](../app/coop/protocol.py). Unknown versions, fields and
 actions are rejected. No network payload is passed to pickle, eval, event script
@@ -53,7 +53,7 @@ enters the explicit dual-ready intermission before the next chapter.
   TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
   hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
-All messages have integer `v: 4` and a string `type`. Initial responses:
+All messages have integer `v: 5` and a string `type`. Initial responses:
 
 | Message | Other fields | Meaning |
 | --- | --- | --- |
@@ -70,7 +70,7 @@ A `command` requires these exact common fields:
 
 | Field | Type / constraint |
 | --- | --- |
-| `v`, `type` | Integer 4, string `command` |
+| `v`, `type` | Integer 5, string `command` |
 | `session` | Current host-generated session ID from the state packet |
 | `id` | 1–64 ASCII letters, digits, `_` or `-`; unique per army for this host session |
 | `revision` | Nonnegative integer copied from the current authoritative packet |
@@ -84,12 +84,13 @@ A `command` requires these exact common fields:
 | `attack` | `unit`: ID, `item`: inventory UID, `target`: unit ID | Active army owns the available unit; weapon is actually in its inventory, equippable, available and usable; LT target/range/line-of-sight rules allow the enemy. Runs LT SimpleCombat through the existing combat state, including counters, RNG, HP, durability, death and events. |
 | `heal` | `unit`: ID, `item`: owned UID, `target`: unit ID | Active army owns a living, selectable, unfinished actor that has not attacked; owned Heal/Mend spell passes LT availability/class/rank/charges, single-target restrictions and actual target-system range/eligibility. Target must be a live ally. Runs native spell combat without equipping a staff, including HP caps, durability, XP and action consumption. |
 | `wait` | `unit`: ID | Active army owns the available unit. Runs normal actively-chosen LT wait and its events. |
+| `save_checkpoint` | None | At a settled configured campaign intermission only; host captures native state and chooses the path. No filename/state/component/event fields. Both peers and normal base checks required; accepted save/retry publishes saved or error status. |
 | `ready` | None | Only at campaign intermission, once per authenticated commander independent of active phase. Requires both peers and current base; the second vote atomically loads the next trusted chapter. No client-selected level, army or event fields. |
 | `end_phase` | None | Requester owns the current phase. Runs existing endstep/turn-change/upkeep states. Blue passes to Green; Green passes through authoritative Red AI to the next Blue turn. |
 
 The host independently computes legality; client movement/attack/heal hints are not
 trusted. Payloads cannot supply damage, HP, a path, random rolls, ownership or an
-event script. Movement is committed immediately, once per unit phase; v4 has no
+event script. Movement is committed immediately, once per unit phase; v5 has no
 move-preview cancellation, canto commands, abilities, trading or arbitrary items.
 
 Before applying a command the host also checks both seats, session, request ID,
@@ -120,7 +121,7 @@ Both clients receive the exact same `state` packet:
 
 | Field | Contents |
 | --- | --- |
-| `v`, `type` | Integer 4, string `state` |
+| `v`, `type` | Integer 5, string `state` |
 | `session`, `revision` | Session ID and monotonically increasing accepted-command revision |
 | `digest` | SHA-256 of canonical `state` JSON only: sorted dictionary keys, compact separators, UTF-8, no non-finite values |
 | `state` | Schema-validated tactical/campaign projection described below |
@@ -138,13 +139,13 @@ matching local engine/assets because they only present state; both must see the
 same session and fingerprint. Digests check this **projection**, not every LT
 internal registry, skill, party, event stack or campaign-save field.
 
-The progression fields introduced in v2 and retained in v4 are `mana` and `max_mana` (integers 0-10000,
+The progression fields introduced in v2 and retained in v5 are `mana` and `max_mana` (integers 0-10000,
 current <= maximum), plus `wexp` (at most 64 weapon IDs mapped to nonnegative,
 finite decimal strings <= 10000, at most 64 characters each). For example,
 `"Axe":"32.5"` preserves fractional engine modifiers without admitting JSON float
 payloads. These are read-only projections. Clients cannot submit XP, levels,
 stats, mana or weapon-XP changes; unknown command fields reject. v1 handshakes and
-packets reject rather than silently losing progression data. Use matching v4
+packets reject rather than silently losing progression data. Use matching v5
 host/clients. Version 3 adds a required `heals` choice list with the same strict
 `{item,target}` schema and inventory/target-ID checks as `attacks`. The new `heal`
 command has the exact same IDs/base fields as attack; it accepts no amount, HP,
@@ -152,7 +153,7 @@ XP, team or other effect data. Only Heal/Mend single-target spells are supported
 There is no generic Use, potion, revive, AoE, sequence, enemy-healing or ownership
 transfer capability. Moving before healing is allowed; healing consumes the
 normal action and blocks another move/attack/heal. Rejections preserve state/RNG.
-Host/clients must all use v4; v1/v2/v3 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`, plus `coop_campaign/v1`;
+Host/clients must all use v5; v1/v2/v3/v4 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`, plus `coop_campaign/v1`;
 scenario version and wire version are separate.
 
 Authoritative result summaries place XP changes, level-ups and stat gains before
@@ -202,8 +203,36 @@ once, new enemies receive fresh IDs/instances, and diffs match units by stable I
 Unexpected transition faults freeze the session. If lifecycle failure prevents
 an active-level projection, the host publishes the last committed board marked
 `fault` with no legal hints. It does not continue partially loaded gameplay or
-claim rollback. Fresh-process checkpoint recovery is future work. See
+claim rollback. Version 5 adds fresh-process chapter-boundary recovery; mid-map
+recovery remains unsupported. See
 [CAMPAIGN.md](CAMPAIGN.md) for ownership, cleanup/death policy and manual play.
+
+## Version 5 checkpoint status (separate from save data)
+
+The required campaign object adds `checkpoint`, an exact object containing
+`status` (`disabled`, `pending`, `saved`, `error` or `restored`), nonnegative
+integer `generation` and bounded `message` (1-256 characters). No native
+checkpoint payload, path, credential or key is transmitted in this field.
+Non-campaign state still uses `campaign: null`. Older v1-v4 clients must update.
+
+A configured host automatically saves on settled Chapter 1 completion under the
+session lock, before publishing intermission. S sends the exact no-argument
+`save_checkpoint` command to retry/create another generation at this boundary.
+It does not run end-chapter cleanup or rewards. Errors publish clear checkpoint
+status; Ready rejects with `checkpoint_required` until saved/restored. Disabled
+storage remains available to in-memory harnesses. CLI campaign hosts enable
+storage by default. Mid-map save attempts reject `not_intermission`; unconfigured
+storage rejects `checkpoint_disabled`. Duplicate/stale/authentication checks
+apply just as to all other commands. No network Load operation exists.
+
+The checkpoint file is a separately validated native-state DTO, never this public
+projection. `--restore` is startup-only before listening in a fresh host process.
+A restored campaign has a new session ID/revision epoch and fresh bearer tokens,
+cleared ready votes and the preserved native boundary. Both commanders Ready to
+continue. Old tokens and old-session commands reject. Fallback diagnostics
+identify rejected generations, and restored status identifies recovery. Disk
+schema, compatibility, native-object verification and exact scope are described
+in [CHECKPOINTS.md](CHECKPOINTS.md).
 
 ## Desynchronization, disconnect and recovery
 
@@ -220,17 +249,18 @@ claim rollback. Fresh-process checkpoint recovery is future work. See
 - Reopen a client with the same credential file after its old connection closes.
   It reclaims the same army and receives the current snapshot. No automatic
   reconnect loop, durable reconnect token store, event-log replay or host-restart
-  recovery exists. Host restart generates new credentials and a fresh map.
+  recovery through this wire protocol exists. Host restart generates new credentials;
+startup checkpoint restoration is separately supported as described above.
 
 ## Liveness and bounded private-session service (Phase 3A)
 
-Use the same current client/host commit. Current v4 includes campaign/roster metadata, weapon XP/mana and healing choices;
+Use the same current client/host commit. Current v5 includes campaign/roster metadata, weapon XP/mana and healing choices;
 clients must understand both those fields and the existing ping/pong controls. Older
 clients must update rather than silently disabling liveness checks.
 
-- After welcome, the host sends `{v:4,type:"ping",nonce:N}` every five seconds
+- After welcome, the host sends `{v:5,type:"ping",nonce:N}` every five seconds
   when no challenge is outstanding. The client reader answers
-  `{v:4,type:"pong",nonce:N}` immediately, independently of pygame polling.
+  `{v:5,type:"pong",nonce:N}` immediately, independently of pygame polling.
   Host nonces start at one and increase per connection. Only the outstanding
   nonce is accepted. Unknown fields, booleans and unsolicited/replayed pong close
   the connection. Ordinary messages cannot substitute for the challenge response.
@@ -264,7 +294,7 @@ clients must update rather than silently disabling liveness checks.
   Connection failure clears command readiness and leaves the last board visible.
 
 This contract supports three demonstrations and one trusted live two-chapter
-campaign. Disk checkpoints, deployment, recruitment, promotions, allied trades/
+campaign. Mid-map checkpoints, deployment, recruitment, promotions, allied trades/
 advanced healing, broader tactical parity and verified Internet play remain
 later milestones. Core Green combat
 XP/level/growth parity is implemented as described in [PROGRESSION.md](PROGRESSION.md). Version the contract explicitly

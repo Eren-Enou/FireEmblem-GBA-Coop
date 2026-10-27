@@ -1,6 +1,115 @@
 # Progress - October 27, 2026
 
-## Current milestone: Phase 5A persistent armies and first campaign
+## Current milestone: Phase 5B reliable chapter-boundary campaign recovery
+
+### Implemented and verified
+
+- `checkpoint.py` defines `coop-chapter-checkpoint/1`, a separate strict bounded
+  native-state DTO and generation store. Exact fields, scalar/list/byte limits,
+  ownership/party/reference/UID/equipment checks, decimal encodings, version and
+  normalized native-rules compatibility reject unsupported data before use.
+  The public client snapshot, pickle and external component/event code are never
+  restoration sources.
+- `checkpoint_native.py` captures native unique characters, growth rates/points/
+  caps, class/level/EXP/stats, weapon XP, HP/mana/fatigue/guard, death, personal
+  fields, item UIDs/uses/owners/equipment, supported passive skill UIDs/sources,
+  separate party resources/convoys/order, completion events/history records and
+  combat/growth/other RNG plus UID generators. Unsupported state rejects rather
+  than silently disappearing. Native prefab factories supply all component code.
+- CLI campaign hosts automatically save the settled Chapter 1 intermission,
+  before native end-chapter cleanup, under the session lock. `save_checkpoint`
+  is a strict no-argument retry/new-generation request at that boundary only.
+  Protocol **v5** exposes saved/error/restored status and generation; intermission
+  shows save confirmation and S retry. Failed saves block Ready until confirmed.
+- Current/previous generations checksum both generation and payload. Temporary
+  same-directory writes flush/fsync before atomic replacement; only validated
+  old state rotates to previous, and the first confirmed save keeps a mirror.
+  Recovery diagnoses bad current and tries previous. Both invalid means startup
+  failure before listening/invitations. Orphan temporaries are ignored.
+- `--restore` validates at startup in a fresh process, reconstructs native unit/
+  item/skill registries and references, rebuilds an intermission with trusted
+  nominal roster positions, restores RNG/UID state and requires exact full native
+  recapture equality before serving clients. New epoch/tokens reject old clients.
+  Ready votes reset; both commanders continue normally, applying cleanup once.
+  Dead characters remain dead with their equipment and never redeploy.
+- Manual save/close/restore instructions, exact schemas/components, fallback and
+  limits are in [CHECKPOINTS.md](CHECKPOINTS.md). No native engine changes or new
+  dependencies; existing demonstrations and fresh campaign startup remain intact.
+
+### Actual executed verification
+
+- Initial checkpoint suite: **20 passed in 110.527 seconds**. Final combined
+  suite after stricter equipment/source/identity checks: **189 passed in 350.772
+  seconds** = those 20 plus all 169 prior selected campaign/healing/progression/
+  playability/TLS/engine regressions. Full repository suite not run.
+- A subsequently added focused test for **Random and Dynamic native growth
+  recovery** passed in **16.390 seconds** (one test with both mode subcases).
+  The current checkpoint module therefore contains 21 checks; the recorded
+  combined run preceded that final additional test.
+- Final audit found and fixed the maximum-generation write edge case: overflow
+  now rejects before rotating either committed file. UID generators also reserve
+  native allocation headroom. These bounds are covered by the final checkpoint
+  rerun: **21 passed in 129.664 seconds**. The prior 189-test result predates this
+  small guard; the final checkpoint run includes all its native/process recovery
+  cases and the added Random/Dynamic check. No 190-test combined run is claimed.
+- Acceptance explicitly completes Chapter 1, saves, exits the entire first host
+  and both graphical clients, starts a new host, rejects old tokens and an
+  old-session command, reconnects two independent graphical clients, compares
+  native/public continuity and completes Chapter 2. Histories match completely:
+  **19 snapshots before shutdown, 21 after recovery**, ending at new-session
+  **revision 20 / Chapter 2 turn 4 victory**. Fresh uninterrupted campaign tests
+  retain their revision-38 victory.
+- Separate process smokes cover normal recovery, corrupt current, truncated
+  current and abrupt writer-process exit before current replacement. Storage
+  checks also cover partial orphan files, fsync/replace exceptions, both files
+  invalid and **actual Windows destination locking** via a handle denying rename.
+  No hardware power-loss or concurrent multi-host writer guarantee is claimed.
+- Native extra-state recovery includes a real personal Strength Plus 2 skill
+  with a working derived stat bonus, a dead Green healer/retained item, custom
+  personal field, mana/fatigue, party money/BEXP and a used Mend convoy instance.
+  Full native recapture, not public projections, proves retained state.
+- Final explicit **TLS corrupt-generation recovery** after the bounds guard:
+  hosts **130472/94176**; clients before **147524/74528**, after **124992/119496**.
+  The current checksum
+  was deliberately corrupted; previous generation 1 restored, native equality
+  verified, old credentials/session rejected and Chapter 2 won. Evidence:
+  `artifacts/checkpoint-smoke/run-724048c4/`; final state digest
+  `7082c7e8c1514e4add2e1dbd288df57245af8e8edfc10ecd67f1db3a31dfde84`.
+- Saved-intermission and restored-victory TLS renders were visually inspected.
+  A separate recovered-intermission capture used host **112656**, clients
+  **114276/149280**, equal revision-0 packets, and visibly identified previous-
+  generation recovery with preserved roster/uses/XP and Ready controls. Evidence:
+  `artifacts/checkpoint-recovered-render-169918b5/`. Scripts drive actual model/
+  command/rendering, not human mouse input. Evidence and credentials stay ignored.
+
+### Limits and next steps
+
+- Publication audit passed: **25 staged text files**, **12 Python syntax checks**
+  and **110 resolving local links**. UTF-8 and whitespace checks pass; no matching
+  credential signatures, native engine source, assets, environments, generated
+  save files or local evidence are staged. Original licensing, attribution,
+  dependencies and prior scenario fixtures remain untouched. This is a scoped
+  publication audit, not a historical asset-rights or full secret/security review.
+
+- Scope is the original campaign's Chapter 1 nonterminal boundary. No mid-map
+  checkpoint, final-victory archive, in-process Load, migrations, recruitment,
+  trading or deployment menus. Restored tactical positions/action flags are
+  deliberately normalized at intermission; native permanent state is retained.
+- Only the declared trusted native items/passives/state shapes are supported.
+  Unknown components/custom variables/support state reject explicitly. Exact
+  native rules compatibility is required; checksums are corruption detection,
+  not authentication against a save editor. A fallback can recover an older
+  generation and lose changes after that generation; diagnostics identify it.
+- File commits are synchronous under the command barrier. Actual OS/storage
+  latency is unbounded; no universal power-loss durability, filesystem ACL
+  hardening or multi-writer coordination claim. Separate-PC/WAN and two-human
+  recovery play remain unverified. No known failing selected checks remain.
+- Next gates: two-human/two-PC TLS save/restore pilot, then deliberate supported-
+  component expansion with native schema tests. Mid-map state requires its own
+  quiescent phase/event/terrain contract. Asset-rights audit remains necessary
+  before redistribution; engine license/credits are preserved.
+
+## Previous milestone: Phase 5A persistent armies and first campaign
 
 ### Implemented and verified
 

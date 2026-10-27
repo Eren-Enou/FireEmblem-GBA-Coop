@@ -34,7 +34,7 @@ See the [network contract](NETWORK_PROTOCOL.md) and
    as a workaround.
 2. On each PC clone [the project](https://github.com/Eren-Enou/FireEmblem-GBA-Coop),
    or update its existing checkout. Compare `git rev-parse HEAD`: use the same
-   current protocol-v4 commit on host and both clients. Protocol v4 includes healing choices, weapon XP/mana and ping/pong controls; old clients must
+   current protocol-v5 commit on host and both clients. Protocol v5 includes healing choices, weapon XP/mana and ping/pong controls; old clients must
    update.
    Keep the inherited development resources present; do not create an
    unauthorized game-asset bundle for the other player.
@@ -174,5 +174,6 @@ need further audit before broader scenarios. Certificate/token expiry/revocation
 UX, Windows ACL handling and durable recovery remain future work.
 
 No public matchmaking, relay service, automatic port forwarding, VPN installation,
-automatic reconnect loop, campaign saves or full tactical parity is implemented.
+automatic reconnect loop or full tactical parity is implemented. Original campaign
+chapter-boundary save/restart is implemented; see [CHECKPOINTS.md](CHECKPOINTS.md).
 Future campaign work follows [CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md).

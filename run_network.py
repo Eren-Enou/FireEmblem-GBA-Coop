@@ -22,7 +22,13 @@ async def host(args):
         client_context(tls)
     from app.coop.simulation import Simulation
     from app.coop.server import Host, Session
-    simulation = Simulation(seed=args.seed, scenario=args.scenario, growth_method=args.growth_method)
+    simulation = Simulation(seed=args.seed or 0, scenario=args.scenario, growth_method=args.growth_method,
+                            checkpoint_dir=args.checkpoint_dir if args.scenario == 'campaign' else None,
+                            restore_dir=args.restore)
+    for diagnostic in simulation.restore_diagnostics:
+        print('CHECKPOINT_RECOVERY ' + diagnostic, flush=True)
+    if args.restore:
+        print('CHECKPOINT_RESTORED generation ' + str(simulation.campaign.checkpoint['generation']), flush=True)
     try:
         session = Session(simulation)
         service = Host(session)
@@ -52,10 +58,12 @@ def main():
     modes = parser.add_subparsers(dest='mode', required=True)
     server = modes.add_parser('host', help='Start the authoritative local simulation')
     server.add_argument('--port', type=int, default=38670)
-    server.add_argument('--seed', type=int, default=0)
-    server.add_argument('--scenario', choices=('training', 'progression', 'healing', 'campaign'), default='training')
+    server.add_argument('--seed', type=int)
+    server.add_argument('--scenario', choices=('training', 'progression', 'healing', 'campaign'), default=None)
     server.add_argument('--growth-method', choices=('Fixed', 'Random', 'Dynamic'),
                         help='Host-only player growth setting; progression drill defaults to Fixed')
+    server.add_argument('--checkpoint-dir', default='artifacts/campaign-checkpoints', help='Host-only chapter-boundary generations')
+    server.add_argument('--restore', help='Restore checkpoint directory at startup in this fresh host process')
     server.add_argument('--session-dir', default='artifacts/network')
     server.add_argument('--bind', default='127.0.0.1', help='Literal local IP; non-loopback requires TLS')
     server.add_argument('--advertise-host', help='Address clients can reach; required for wildcard binds')
@@ -70,9 +78,14 @@ def main():
     client.add_argument('--headless', action='store_true')
     args = parser.parse_args()
     if args.mode == 'host':
+        if args.restore and (args.scenario not in (None, 'campaign') or args.seed is not None or args.growth_method is not None):
+            parser.error('--restore uses the saved campaign/seed/growth settings; do not override them')
+        args.scenario = args.scenario or ('campaign' if args.restore else 'training')
+        if args.restore and args.checkpoint_dir == 'artifacts/campaign-checkpoints':
+            args.checkpoint_dir = args.restore
         if not 0 <= args.port <= 65535:
             parser.error('port must be between 0 and 65535')
-        if not 0 <= args.seed <= 1023:
+        if args.seed is not None and not 0 <= args.seed <= 1023:
             parser.error('seed must be between 0 and 1023')
         if any((args.tls_cert, args.tls_key, args.server_name)) and not all((args.tls_cert, args.tls_key, args.server_name)):
             parser.error('--tls-cert, --tls-key and --server-name must be supplied together')

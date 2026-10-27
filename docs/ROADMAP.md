@@ -113,9 +113,21 @@ with narrow native-engine commands and equivalent recovery/authority tests.
 - [x] Real two-client full campaign and intermission/transition failure coverage.
 - [ ] Two-human usability and separate-PC campaign play remain unverified.
 
-Next Phase 5B: implement strict chapter-boundary checkpoint A with atomic file
-generations, corruption/interrupted-write tests, fresh-process startup restore
-and new invitations. No disk saves or restart recovery exist in Phase 5A.
+## Phase 5B: reliable chapter-boundary recovery
+
+- [x] Separate strict native-state JSON DTO with bounded ownership/reference checks.
+- [x] Automatic settled Chapter 1 checkpoint, explicit retry and visible save status.
+- [x] Atomic current/previous generations, checksums and clear fallback diagnostics.
+- [x] Fresh-process startup restore using trusted native objects and exact recapture.
+- [x] Retained progression/growth, equipment/uses, skills, parties, permadeath and RNG.
+- [x] Fresh credentials/session; old tokens and stale-session commands reject.
+- [x] Complete shutdown/restart/client reconnect/Chapter 2 victory acceptance.
+- [x] Corrupt/truncated generations, abrupt writer exit and Windows locked-file checks.
+- [ ] Two-human and separate-PC TLS save/recovery pilot remains unverified.
+
+Next: run that pilot and extend supported state only with native component/schema
+tests. Mid-map checkpoints require a separate contract; no deployment/trade/
+recruitment features or migration framework were introduced by Phase 5B.
 
 ## Remaining tactical/campaign parity (not implemented)
 
@@ -126,14 +138,14 @@ audit. These design tasks are complete; the mechanics/checkpoint gates below are
 - Broader equipment/inventory management and deployment; persistent independent rosters now exist.
 - Recruitment, promotions and persistent ownership changes; core Green combat XP/growth is complete.
 - Broader item use/healing abilities, supports, trade, paired interactions and permadeath audits; Heal/Mend is complete.
-- Shared campaign saves with an explicit phase/event/RNG schema.
-- Chapter-boundary DTO first, then supported mid-map quiescent checkpoints;
-  validated restore, atomic generation commit, corruption recovery and migrations.
+- Broader campaign saves and mid-map phase/event/terrain schema; original chapter-boundary saves now work.
+- Extend supported checkpoint components and then mid-map quiescent checkpoints;
+  migrations need an actual future schema, not speculative conversion.
 - Explicit host-owned army identities/two persistent parties, followed by
   network Equip/Use/Heal/Trade/Recruit/Promote/deployment slices. Core combat
   XP/growth parity is implemented by Phase 4A.
 
-## Phase 5: campaign integration (not started)
+## Broader campaign integration (not implemented)
 
 - Audit a permitted campaign's team assumptions, objectives and story events.
 - Establish asset permissions and replace unauthorized assets before packaging.

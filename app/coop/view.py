@@ -24,7 +24,7 @@ def scripted_step(connection, operation):
         return model.packet['revision'] >= operation['revision']
     if kind == 'wait_for':
         return all(state.get(key) == value for key, value in operation.items() if key != 'action')
-    if not (model.can_ready if kind == 'ready' else model.can_act):
+    if not (model.can_save if kind == 'save_checkpoint' else model.can_ready if kind == 'ready' else model.can_act):
         return False
     if kind in ('advance', 'attack_nearest'):
         unit = next(u for u in state['units'] if u['id'] == operation['unit'])
@@ -93,7 +93,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
             disconnect(exc)
 
     def command(action, **args):
-        if (model.can_ready if action == 'ready' else model.can_act) and not error:
+        if (model.can_save if action == 'save_checkpoint' else model.can_ready if action == 'ready' else model.can_act) and not error:
             send(model.command(action, **args))
 
     try:
@@ -124,6 +124,8 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                     elif event.key == pygame.K_r and not error:
                         model.syncing = True
                         send({'v': VERSION, 'type': 'sync'})
+                    elif event.key == pygame.K_s:
+                        command('save_checkpoint')
                     elif event.key == pygame.K_e:
                         command(continuation)
                     elif event.key == pygame.K_w and unit and unit['team'] == model.team and not unit['finished']:
@@ -243,7 +245,8 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                     items = ', '.join(i['name'] + ':' + str(i['uses']) for i in member['inventory'])
                     text(f"{NAMES[member['owner']]} {member['name']} L{member['level']} XP {member['exp']} " + ('FALLEN' if member['dead'] else 'SURVIVED'), 48, 255 + row*48, COLORS[member['team']])
                     text(items, 48, 276 + row*48)
-                text('Select a roster row; both Ready [E] to continue', 48, 460)
+                text(state['campaign']['checkpoint']['message'][:60], 48, 445, (242, 199, 119))
+                text('Select roster; Save/retry [S]; both Ready [E]', 48, 465)
             mouse_x, mouse_y = pygame.mouse.get_pos()
             hover = ((mouse_x - LEFT) // tile, (mouse_y - TOP) // tile)
             tile_hint = f'Tile {hover}: ' if 0 <= hover[0] < state['width'] and 0 <= hover[1] < state['height'] else ''

@@ -1,10 +1,10 @@
-"""Version 4, bounded JSON only. No engine imports or executable serialization."""
+"""Version 5, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
 import math
 import re
 
-VERSION = 4
+VERSION = 5
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -87,7 +87,7 @@ def validate_request(value):
     elif kind == 'command':
         action = value.get('action')
         extra = {'move': ('unit', 'pos'), 'attack': ('unit', 'item', 'target'),
-                 'heal': ('unit', 'item', 'target'), 'wait': ('unit',), 'end_phase': (), 'ready': ()}
+                 'heal': ('unit', 'item', 'target'), 'wait': ('unit',), 'end_phase': (), 'ready': (), 'save_checkpoint': ()}
         require(type(action) is str and action in extra, 'unknown_action')
         fields(value, ('v', 'type', 'session', 'id', 'revision', 'phase', 'digest', 'action') + extra[action])
         for key in ('session', 'id', 'phase', 'digest'):
@@ -119,7 +119,11 @@ def validate_state(value):
     require(value['status'] in ('playing', 'intermission', 'victory', 'defeat', 'fault'))
     campaign = value['campaign']
     if campaign is not None:
-        fields(campaign, ('id', 'chapter', 'title', 'next_title', 'completed', 'ready'))
+        fields(campaign, ('id', 'chapter', 'title', 'next_title', 'completed', 'ready', 'checkpoint'))
+        fields(campaign['checkpoint'], ('status', 'generation', 'message'))
+        require(campaign['checkpoint']['status'] in ('disabled', 'pending', 'saved', 'error', 'restored'))
+        integer(campaign['checkpoint']['generation'])
+        string(campaign['checkpoint']['message'], 256)
         for key in ('id', 'chapter', 'title'):
             string(campaign[key])
         if campaign['next_title'] is not None:

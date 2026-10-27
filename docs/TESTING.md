@@ -1,6 +1,76 @@
 # Environment and verification
 
-## Phase 5A campaign verification
+## Phase 5B checkpoint verification
+
+Use the existing Python 3.12 environment from the actual repository root.
+OpenSSL CLI must be on PATH for TLS identities. No new dependencies are required.
+
+```powershell
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_checkpoint -q
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_checkpoint app.tests.test_coop_campaign app.tests.test_coop_healing app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_checkpoint.CheckpointNativeTests.test_random_and_dynamic_native_growth_state_recovers -q
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --tls --recovery corrupt
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --recovery truncated
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --recovery interrupted
+```
+
+Executed October 27, 2026: initial **20 checkpoint tests passed in 110.527
+seconds**. Final combined **189 passed in 350.772 seconds**, covering all 169
+prior selected regressions plus those 20. One added Random/Dynamic growth recovery
+test then passed in **16.390 seconds**, including both mode subcases. The current
+commands include that addition and will enumerate 21 checkpoint/190 combined
+tests; a 190-test combined run is not claimed. Full repository suite not run.
+The final bounds audit then added a pre-write generation-overflow guard and
+reserved UID allocation headroom. All **21 checkpoint tests passed again in
+129.664 seconds** afterward, including the four process recovery cases. The
+recorded 189-test combined run predates that small guard; no broader code changed.
+Existing OpenSSL directory `C:\Ruby33-x64\msys64\usr\bin` was prepended to this
+process's PATH only; no software or system settings changed.
+
+Schema checks cover separate native data, strict fields/types/byte bounds,
+duplicates, checksum/generation tampering, truncation, invalid encoding/depth,
+unknown versions/components, ownership, classes/native caps, equipment eligibility,
+UID/reference uniqueness, skill/party references, mode/RNG and forbidden client
+filenames/state. Unsupported native skill data rejects rather than disappearing.
+
+File checks cover verified current/previous generations and first-save mirror,
+corrupt/truncated current fallback with diagnostics, both generations invalid,
+partial orphan files ignored, injected fsync/rename failures and an actual Windows
+file handle denying replacement. Abrupt writer-process exit before current
+replacement leaves the previous committed state recoverable. No hardware
+power-loss behavior or concurrent-host writing was tested.
+
+Native/fresh-process checks preserve stable unit/item/skill IDs, native growth
+rates/points/caps and XP/stats, weapon XP/uses, permadeath, personal fields,
+mana/fatigue, real passive-skill effects, party money/BEXP and a used convoy item.
+The loader requires exact native recapture equality before listening. Restore
+inside a used process rejects; invalid startup emits no invitations/listener.
+Mid-map saves reject without state/RNG mutation. Disk errors publish visible
+failure, block Ready and recover through explicit retry without repeated rewards.
+
+The four checkpoint process tests each start one host/two graphical clients,
+finish Chapter 1, stop all three, restart a new host, reject old tokens and an
+old-session request, join two new graphical clients and win Chapter 2. Cases are
+normal/corrupt/truncated/interrupted. Full histories match: **19 snapshots before,
+21 after**, ending new-session revision 20/turn 4 victory. Existing fresh campaign,
+healing, progression, full battles, TLS/security/liveness/sync and selected native
+engine regressions still pass.
+
+Final explicit TLS corrupt-generation run after the bounds guard passed with
+hosts 130472/94176, clients 147524/74528 then 124992/119496. Evidence remains
+ignored at `artifacts/checkpoint-smoke/run-724048c4/`. Saved and final TLS renders were
+visually inspected. A separate recovered-intermission render at
+`artifacts/checkpoint-recovered-render-169918b5/` compared equal revision-0 packets
+and displayed the previous-generation warning, preserved roster and continuation
+controls. This is automated rendering, not a human playtest.
+
+Manual save/close/startup-restore/TLS procedures and exact supported limits are
+in [CHECKPOINTS.md](CHECKPOINTS.md). Separate-PC/WAN, two-human recovery, mid-map
+and final-result saves, broad custom components and migrations remain unverified
+or unsupported. Back up both generation files and use the matching native rules.
+
+## Earlier Phase 5A campaign verification
 
 Use the existing Python 3.12 environment from the actual repository root. OpenSSL
 CLI must be on PATH for TLS identity tests. No new dependencies are required.

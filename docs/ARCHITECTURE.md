@@ -1,5 +1,43 @@
 # Architecture and original engine assessment
 
+## Phase 5B chapter-boundary checkpoints
+
+`checkpoint.py` defines an engine-free, exact bounded JSON DTO, compatibility
+manifest, generation/checksum envelope and current/previous atomic store.
+`checkpoint_native.py` explicitly captures native persistent registries and
+reconstructs trusted native unit/item/skill objects. It never restores a public
+projection or passes file-supplied component arrays/class names to LT.
+Full field/schema/reference checks precede construction; native catalog/cap
+checks precede game initialization. Unsupported state rejects explicitly.
+
+The supported boundary is settled Chapter 1 intermission before native cleanup.
+`Session.command_steps` automatically captures/commits there, before publication
+and under the session lock. Manual `save_checkpoint` retries at the same barrier
+with no filename/state payload. The host owns the directory. Save failures
+publish visible error status and block Ready until success. Storage writes are
+synchronous inside this boundary; individual OS I/O latency is not bounded.
+All native capture and mutation remain on the engine thread.
+
+`--restore` is startup-only in a fresh process. The guarded constructor validates
+the generation before native initialization, uses trusted prefabs and factories,
+reattaches equipment/skills/parties, rebuilds an intermission board with nominal
+roster positions, restores completion records and all RNG/UID state, then requires
+an exact full native recapture match before listening. It clears ready votes,
+not character progression. New Session credentials/epoch reject old clients.
+Both Ready votes then apply native cleanup once and load Chapter 2 normally.
+No simultaneous independent LT singleton, live-load or mid-map restore exists.
+
+Writes flush/fsync a temporary file and replace within the same directory,
+rotating only a verified good generation. Recovery diagnoses invalid current and
+tries previous; neither valid means startup failure before invitations/listening.
+Orphan temporary files are ignored. A first confirmed save keeps a mirror too.
+Checksums cover generation plus payload; they do not authenticate an editor.
+
+Protocol v5 adds campaign checkpoint status/generation/message and the strict
+save request. The intermission shows saved/error/recovered state and S retries;
+the rest of the renderer/command authority remains unchanged. Schema, supported
+components, platform limits and recovery commands: [CHECKPOINTS.md](CHECKPOINTS.md).
+
 ## Phase 5A live campaign continuity
 
 `app/coop/campaign.py` installs two original trusted chapters, four native unique

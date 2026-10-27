@@ -9,16 +9,17 @@ rejoin. Network processing runs between LT steps without parallel engine work.
 Verified TLS supports private remote endpoints. Follow the
 [Windows two-PC playtest procedure](docs/INTERNET_PLAY.md) for environment setup,
 identity creation, private army invitations, controls, a complete battle and
-reconnection. **Actual two-PC Internet play remains unverified.** Campaign saves,
-public matchmaking and advanced tactical parity are not implemented. Blue and
+reconnection. **Actual two-PC Internet play remains unverified.** Mid-map saves, public
+matchmaking and advanced tactical parity are not implemented. Blue and
 Green now gain combat XP and level through the same player growth rules. See the
 [progression drill](docs/PROGRESSION.md) for a reproducible two-army level-up.
 Blue and Green can also heal one another with real LT staves. The separate
 [Mutual Aid encounter](docs/HEALING.md) demonstrates frontliners protecting
 healers and cross-army support. The [two-chapter campaign](docs/CAMPAIGN.md) now carries permanent Blue/Green
 characters, progression and used equipment into the next battle through a shared
-ready screen. This requires a live host; disk saving is future work.
-Protocol v4 requires matching host and clients.
+ready screen. [Chapter-boundary checkpoints](docs/CHECKPOINTS.md) let both friends
+close all processes after Chapter 1 and resume later with fresh invitations.
+Protocol v5 requires matching host and clients.
 [Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:

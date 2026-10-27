@@ -4,8 +4,10 @@ Status: Phase 4A core XP/level/growth parity is implemented and locally tested;
 see [PROGRESSION.md](PROGRESSION.md). Phase 4B adds the narrow allied Heal/Mend
 staff slice and original [Mutual Aid encounter](HEALING.md). Phase 5A implements
 [live two-chapter continuity](CAMPAIGN.md) with native persistent units and two
-parties. Disk checkpoints, restart recovery and broader parity remain design
-work. Phase 5B should implement checkpoint A as a separate milestone.
+parties. Phase 5B implements [checkpoint A](CHECKPOINTS.md) for the trusted
+Chapter 1 intermission, including atomic generations and fresh-process startup
+recovery. Broader state support, mid-map checkpoints and migrations remain design
+work; the tables below describe broader gates, not the current save schema.
 This document follows the tested [Internet transport path](INTERNET_PLAY.md).
 It preserves the full goal: two allied commanders completing multiple chapters
 with independent development, equipment and persistent ownership.
@@ -71,9 +73,11 @@ Only the host resumes the event after validating a reply. Save requests defer or
 reject while an unsupported prompt is open. These phase/status/prompt additions
 need an explicit protocol version and matching client controls.
 
-## Save method A: chapter-boundary checkpoints first
+## Save method A: chapter-boundary checkpoints (supported subset implemented)
 
-Implement a separate **strict JSON DTO**, e.g. `coop-campaign/1`, with exact
+The implemented subset is `coop-chapter-checkpoint/1` in `checkpoint.py`, with
+native capture/restore in `checkpoint_native.py`; see its exact limits in
+[CHECKPOINTS.md](CHECKPOINTS.md). For broader campaigns, extend a separate **strict JSON DTO**, e.g. `coop-campaign/1`, with exact
 fields, scalar ranges, entity-count/size limits and referential checks. It is not
 the public display projection and is not a renamed pickle or arbitrary output
 of `GameState.save()`. Initial boundary is after chapter results have resolved,
@@ -196,7 +200,8 @@ client control and synchronized evidence.
    real network combat, including counters, with identical published results.
 3. Phase 5A introduces persistent original rosters/two parties and two original
    chapters within a live host. Phase 5B separately implements checkpoint A,
-   corruption/atomicity tests and fresh-process host restart; migrations require
+   corruption/atomicity tests and fresh-process host restart (implemented for the
+   original Chapter 1 boundary); migrations require
    an actual subsequent schema rather than a speculative framework.
 4. Expand Equip/Use/Heal/Trade and promotion/recruitment/deployment with the matrix
    above; add checkpoint B only for supported quiescent state.

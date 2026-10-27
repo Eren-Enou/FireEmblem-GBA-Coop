@@ -5,9 +5,26 @@ from pathlib import Path
 
 from app.coop.protocol import ProtocolError
 
+_started_in_process = False
+
 
 class Simulation:
-    def __init__(self, seed=0, scenario="training", growth_method=None):
+    def __init__(self, seed=0, scenario="training", growth_method=None, checkpoint_dir=None, restore_dir=None):
+        global _started_in_process
+        from app.coop.checkpoint import CheckpointError, Store
+        if restore_dir and _started_in_process:
+            raise CheckpointError("Restore requires a fresh host process")
+        self.checkpoint_store = Store(checkpoint_dir or restore_dir) if checkpoint_dir or restore_dir else None
+        self.restore_diagnostics = []
+        restored = None
+        if restore_dir:
+            restored, self.restore_diagnostics = Store(restore_dir).load()
+            seed = restored["payload"]["rng"]["seed"]
+            growth_method = restored["payload"]["mode"]["growths"]
+            scenario = "campaign"
+        if self.checkpoint_store and scenario != "campaign":
+            raise CheckpointError("Checkpoints require the campaign scenario")
+        _started_in_process = True
         if scenario not in ('training', 'progression', 'healing', 'campaign'):
             raise ValueError('Unknown trusted scenario')
         if growth_method not in (None, 'Fixed', 'Random', 'Dynamic'):
@@ -45,6 +62,9 @@ class Simulation:
         elif scenario == 'campaign':
             from app.coop import campaign
             level_id = campaign.install()
+            if restored:
+                from app.coop.checkpoint_native import validate_catalog
+                validate_catalog(restored['payload'])
         # Preserve the same objectives/events, but keep the final board for
         # clients instead of entering local chapter/title/game-over presentation.
         for event in DB.events:
@@ -64,6 +84,8 @@ class Simulation:
         elif scenario == 'campaign':
             self.game.current_mode.growths = growth_method or 'Fixed'
             self.campaign = campaign.Campaign(self.game)
+            if self.checkpoint_store:
+                self.campaign.checkpoint = {'status': 'pending', 'generation': 0, 'message': 'Checkpoint at chapter completion'}
         elif growth_method:
             self.game.current_mode.growths = growth_method
         self.units = list(self.game.units)
@@ -79,6 +101,32 @@ class Simulation:
             hasher.update(path.as_posix().encode() + b'\0' + path.read_bytes())
         self.ruleset = hasher.hexdigest()
         self.settle()
+        if restored:
+            from app.coop.checkpoint_native import restore
+            self._restore_startup = True
+            try:
+                restore(self, restored['payload'])
+            finally:
+                self._restore_startup = False
+            self.campaign.checkpoint = {'status': 'restored', 'generation': restored['generation'],
+                                       'message': ('Recovered previous valid checkpoint; both Ready' if self.restore_diagnostics else
+                                                   'Restored chapter boundary; both commanders Ready')}
+
+    def save_checkpoint(self):
+        from app.coop.checkpoint import CheckpointError
+        from app.coop.checkpoint_native import capture
+        if self.status != 'intermission':
+            raise ProtocolError('not_intermission')
+        if not self.checkpoint_store:
+            raise ProtocolError('checkpoint_disabled')
+        try:
+            generation = self.checkpoint_store.save(capture(self))
+            self.campaign.checkpoint = {'status': 'saved', 'generation': generation,
+                                       'message': 'Checkpoint saved; safe to close the host'}
+        except (OSError, CheckpointError) as exc:
+            self.campaign.checkpoint = {'status': 'error', 'generation': 0,
+                                       'message': ('Checkpoint NOT confirmed: ' + str(exc))[:256]}
+        print(self.campaign.checkpoint['message'], flush=True)
 
     def close(self):
         from app.engine import config, save
@@ -173,9 +221,14 @@ class Simulation:
         from app.engine import action, skill_system
         from app.engine.combat import interaction
         game = self.game
+        if command['action'] == 'save_checkpoint':
+            self.save_checkpoint()
+            return
         if command['action'] == 'ready':
             if self.status != 'intermission' or not self.campaign:
                 raise ProtocolError('not_intermission')
+            if self.checkpoint_store and self.campaign.checkpoint['status'] not in ('saved', 'restored'):
+                raise ProtocolError('checkpoint_required')
             try:
                 self.campaign.confirm_ready(game, team)
                 self.units = list(game.units)

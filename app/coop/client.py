@@ -93,10 +93,17 @@ class Model:
     def can_ready(self):
         return bool(self.packet and set(self.peers) == set(TEAMS) and not self.pending and
                     not self.syncing and self.packet['state']['status'] == 'intermission' and
-                    self.team not in self.packet['state']['campaign']['ready'])
+                    self.team not in self.packet['state']['campaign']['ready'] and
+                    self.packet['state']['campaign']['checkpoint']['status'] in ('disabled', 'saved', 'restored'))
+
+    @property
+    def can_save(self):
+        return bool(self.packet and set(self.peers) == set(TEAMS) and not self.pending and
+                    not self.syncing and self.packet['state']['status'] == 'intermission' and
+                    self.packet['state']['campaign']['checkpoint']['status'] != 'disabled')
 
     def command(self, action, **kwargs):
-        require(self.can_ready if action == 'ready' else self.can_act, 'client_not_ready')
+        require(self.can_save if action == 'save_checkpoint' else self.can_ready if action == 'ready' else self.can_act, 'client_not_ready')
         packet = self.packet
         request = {'v': VERSION, 'type': 'command', 'session': packet['session'],
                    'id': uuid.uuid4().hex, 'revision': packet['revision'],

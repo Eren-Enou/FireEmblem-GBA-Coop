@@ -19,8 +19,9 @@ weapon XP/mana projections and a separate progression drill. Phase 4B adds
 protocol-v3 Heal/Mend staff commands, allied healing hints/UI and the separate
 Mutual Aid scenario. Phase 5A adds native persistent unique characters, distinct
 Blue/Green parties and a live two-chapter campaign with dual-ready intermission.
-Protocol v4 carries campaign/roster metadata and variable maps. Campaign disk
-saves and full tactical parity are not implemented; concrete engine-based methods and gates are documented.
+Phase 5B adds validated native chapter-boundary checkpoints, atomic generations
+and fresh-process recovery. Protocol v5 carries checkpoint status/save requests
+alongside campaign metadata. Mid-map saves and full tactical parity remain open.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
@@ -69,7 +70,7 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   training: 95 starting XP and 40 human HP are declared fixture initial conditions,
   not rewards or normal campaign defaults. Keep `healing_demo.py` separate too;
   its injured frontliners, Cleric healers and two chokepoints are original fixture
-  conditions. Protocol v4 requires matching clients.
+  conditions. Protocol v5 requires matching clients.
 - Healing is a narrow Heal/Mend spell slice: delegate availability/rank/range/
   target restrictions and all effects to LT. Never equip non-equippable staves,
   transfer target ownership, accept client healing amounts, or turn `heal` into
@@ -86,6 +87,20 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   Native cleanup hooks/HP recovery apply once. Publish after settlement; lifecycle
   failure freezes the session. Use ID-based diffs when the chapter roster changes.
   Read [campaign instructions](docs/CAMPAIGN.md) before extending this lifecycle.
+- Keep `checkpoint.py` as a separate bounded, versioned native-state DTO/storage
+  contract; never serialize display JSON or accept pickle/component code. Capture
+  only settled Chapter 1 intermission before native cleanup; unsupported state
+  must reject explicitly. Restore only in a fresh constructor/process before
+  listening, with trusted prefabs, verified references, rebuilt registries/derived
+  state and exact native recapture equality. Never load into an existing host.
+- Keep checksums over generation and payload, fsynced temporary files, atomic
+  replacement and previous-good fallback. Do not rotate corrupt bytes over the
+  good fallback. On save errors publish clear status and block Ready until retry
+  succeeds; S requests a host-configured checkpoint, never a client filename.
+  Use a new session/credentials after startup recovery. Keep save files ignored
+  under `artifacts/`; read [checkpoint rules](docs/CHECKPOINTS.md) before changes.
+  Native rules compatibility is conservative and normalized; no load bypass or
+  speculative migrations. No mid-map support until its separate gates pass.
 - Hold the session lock across cooperative engine-step yields and publication.
   Heartbeat/read tasks may run between steps but must never access engine state.
   Do not put LT simulation in independent threads or automatically replay a

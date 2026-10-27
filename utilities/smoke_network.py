@@ -74,6 +74,8 @@ def run_smoke(output, tls=False, progression=False, healing=False, campaign=Fals
             options = ['--tls-cert', str(certificate), '--tls-key', str(key), '--server-name', 'localhost']
         if progression or healing or campaign:
             options += ['--scenario', 'campaign' if campaign else 'healing' if healing else 'progression']
+        if campaign:
+            options += ['--checkpoint-dir', str(folder / 'checkpoints')]
         host = launch('host', 'host', '--port', '0', '--session-dir', str(folder / 'credentials'), *options)
         deadline = time.monotonic() + 30
         while not all((folder / 'credentials' / (name + '.json')).exists() for name in ('blue', 'green')):

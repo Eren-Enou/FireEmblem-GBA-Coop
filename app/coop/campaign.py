@@ -96,6 +96,7 @@ class Campaign:
         self.index = 0
         self.ready = set()
         self.completed = []
+        self.checkpoint = {'status': 'disabled', 'generation': 0, 'message': 'Checkpoint storage disabled'}
         game.current_mode.permadeath = True
         for team, party in PARTIES.items():
             if party not in game.parties:
@@ -132,4 +133,5 @@ class Campaign:
     def projection(self, game):
         return {'id': ID, 'chapter': CHAPTERS[self.index], 'title': TITLES[self.index],
                 'next_title': TITLES[self.index+1] if self.index+1 < len(CHAPTERS) else None,
-                'completed': list(self.completed), 'ready': sorted(self.ready)}
+                'completed': list(self.completed), 'ready': sorted(self.ready),
+                'checkpoint': dict(self.checkpoint)}
