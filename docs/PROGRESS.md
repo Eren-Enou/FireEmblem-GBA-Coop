@@ -1,6 +1,109 @@
 # Progress - October 27, 2026
 
-## Current milestone: Phase 4B cooperative healing
+## Current milestone: Phase 5A persistent armies and first campaign
+
+### Implemented and verified
+
+- `campaign.py` defines the original **The First Alliance** (13x8) and **Holding
+  the Line** (16x9), native unique persistent Aren/Mira and Tovan/Sela characters,
+  distinct Blue/Green native parties and story factions, and an explicit owner
+  map independent of tactical team. Normal rout/army-elimination events and Red
+  Pursue AI resolve both chapters. All earlier scenarios remain unchanged.
+- Native registry/cleanup/instance-level loading carries the actual unit, item
+  and permanent skill objects forward. No reconstruction from the display JSON,
+  second engine singleton, UID reset or replacement character/progression system.
+  Tests compare native growth rates/points/caps, level/XP/stats, weapon XP,
+  equipment instance/uses, personal fields and skill data across the boundary.
+- Chapter 1 victory settles into intermission. Each authenticated commander can
+  Ready once, independent of phase, under normal session/revision/digest/peer
+  checks. The second vote loads only the next trusted chapter while holding the
+  session lock and publishes once after settlement to Blue turn 1. Reconnect
+  retains ready votes; duplicate/stale requests do not replay transitions.
+- Protocol **v4** adds campaign/chapter/title/completion/readiness, intermission,
+  owner/party/faction/class/persistence/skill/equipment metadata and actual map
+  dimensions. Old v1/v2/v3 peers reject. The client scales maps and shows chapter
+  objective/title and an intermission roster/next-title/Ready panel; roster rows
+  select full character details. Host/client diffs now match stable IDs rather
+  than assuming unchanged enemy lists.
+- Native end-chapter cleanup restores HP, applies configured mana reset and
+  component hooks, retires temporary enemies/items/skills and rebuilds local
+  board/events/actions/phases. XP, stats, growth state and item uses persist.
+  Explicit permadeath and disabled death convoy avoid native Blue-only casual/
+  convoy branches. Fallen characters remain owned/registered with items and do
+  not redeploy. See [CAMPAIGN.md](CAMPAIGN.md) for exact rules and manual play.
+- Unexpected transition failure freezes the session. A missing-level projection
+  publishes the last committed board marked fault with legal hints cleared,
+  never a partially initialized playable chapter. This is not rollback/recovery.
+
+### Executed verification
+
+- **169 tests passed in 230.143 seconds**: 15 new campaign checks plus all 154
+  selected Phase 4B/4A/earlier tests. Full repository suite not run. Covers real
+  campaign continuity/victory, readiness/rejections, intermission rejoin,
+  disconnect before/during transition, dead characters, separate ownership,
+  strict schema, native skills/fields/mana and terminal lifecycle fault handling.
+- Seed-0 campaign: Chapter 1 completion revision **18 / turn 4**; second ready
+  vote loads Chapter 2 at **revision 20 / Blue turn 1**; final shared victory
+  **revision 38 / Chapter 2 turn 4**. Both clients match complete host packets
+  after every command. Both armies gain real combat/healing XP and levels.
+- Aren carries level 3/16 XP/STR 8/Axe XP 41/axe UID 100 with 38 uses; Tovan
+  carries level 2/14 XP/STR 8/Axe XP 33/UID 102 with 43 uses. Both healers carry
+  level 2/28 XP and their original Heal items with 27 uses. A controlled real
+  Chapter 2 hit deals **11 damage**, demonstrating Chapter 1 Strength growth
+  (starting Strength yields 10). Native identities and component data, not the
+  public projections, establish persistence.
+- Initial campaign-only suite: **13 passed in 66.069 seconds**; two additional
+  ownership/schema tests are included in the final 169. Contract/model baseline
+  checks also passed (6 in 1.551 seconds). After roster-row selection and token
+  centering polish, campaign/healing graphical and targeting checks passed again:
+  **3 tests in 18.956 seconds**.
+- A final native continuity recheck, strengthened with all-stream RNG equality
+  and native party-object identity assertions, passed: **1 in 4.930 seconds**.
+- Explicit TCP campaign smoke compared **39 identical snapshots**, revision 38,
+  host PID 163432 and clients 89100/89052; ignored evidence at
+  `artifacts/network-smoke/run-b453f6c2/`. Final explicit TLS campaign after the
+  presentation recheck: host **145112**, clients **116560/41872**, **39 equal
+  snapshots through revision 38**, evidence `artifacts/network-smoke/run-e7438a6a/`.
+  Digest `ac6f62920943a1523e2d564a942e45ed0adf358420d062e44ccfb85d7b1bbeac`.
+- Intermission graphical capture used three independent processes, stopped at
+  revision 18 with equal client packets; host 119640, clients 145232/166776,
+  evidence `artifacts/campaign-intermission-7ff91960/`. Final presentation capture
+  at `artifacts/campaign-intermission-final-31ca1638/` used host 152752 and clients
+  163976/6288, again with equal revision-18 packets. The intermission and TLS
+  Chapter 2 final renders were inspected for title, roster/uses/XP, continuation,
+  scaled geometry, stats/growth and transport display. This is scripted rendering
+  evidence, not a human playtest.
+
+### Investigated failures, limitations and next step
+
+- Publication audit passed: **23 staged text files**, **11 Python syntax checks**
+  and **95 resolving local links**. No engine source, assets, credentials,
+  environments or local outputs are staged; licensing/attribution, dependencies
+  and earlier fixtures remain untouched. Corrected Windows default-encoding
+  damage in two edited documents before staging; UTF-8 checks now pass. This
+  scoped audit does not establish historical asset rights or a full secret/
+  security review. Repository root/remotes were verified and origin fetched
+  without a remote divergence before implementation.
+
+- The first exploratory tactic blindly prioritized cross-army support, sacrificed
+  a critically wounded captain and lost Chapter 2. The acceptance driver now
+  prioritizes the most vulnerable reachable ally and avoids unsafe attacks. No
+  native combat/healing formula or prior scenario was changed to make it pass.
+  An initial test command used a nonexistent test-class name; rerunning the
+  actual ContractAndModelTests passed. There are no known failing selected checks.
+- Native Blue-only party roster queries are bypassed for explicit campaign
+  ownership, not globally rewritten. Casual revival, death-to-convoy transfer,
+  arbitrary scripted skills/events and deployment need separate parity work.
+- Continuity requires the live host. No disk save, restart recovery, checkpoints,
+  migrations, recruitment, trading, promotion, shops or matchmaking are added.
+  Separate-PC/WAN and two-human exploratory play remain unverified. Original
+  installed UI/audio/icons still require an asset audit before redistribution.
+- Recommended **Phase 5B**: strict chapter-boundary checkpoint A, native-state/
+  ownership/component validation, atomic current/previous generations, corrupted/
+  interrupted-write tests, and startup-only restore in a fresh process with fresh
+  invitations. Never treat the public snapshot as a save or load remote pickle.
+
+## Previous milestone: Phase 4B cooperative healing
 
 ### Implemented
 

@@ -1,5 +1,6 @@
 """TCP/TLS host. The event loop serializes all simulation mutation."""
 import asyncio
+from copy import deepcopy
 import hmac
 import logging
 import secrets
@@ -19,8 +20,23 @@ class Session:
         self.seen = {team: set() for team in TEAMS}
         self.packet = self.make_packet()
 
+    def state_projection(self):
+        try:
+            return self.simulation.snapshot()
+        except Exception:
+            if not self.simulation.fault or not hasattr(self, 'packet'):
+                raise
+            # An unexpected lifecycle fault may leave no active level. Freeze
+            # the last published board, never expose a half-initialized chapter.
+            state = deepcopy(self.packet['state'])
+            state['status'] = 'fault'
+            for unit in state['units']:
+                for kind in ('moves', 'attacks', 'heals'):
+                    unit[kind] = []
+            return state
+
     def make_packet(self, result=None):
-        state = self.simulation.snapshot()
+        state = self.state_projection()
         return validate_packet({'v': VERSION, 'type': 'state', 'session': self.id,
                                 'revision': self.revision, 'digest': digest(state),
                                 'state': state, 'result': result})
@@ -77,9 +93,14 @@ class Session:
             # A partially applied command is never reported as a rejection with
             # an unchanged revision. Publish a terminal authoritative fault.
         self.revision += 1
-        after = self.simulation.snapshot()
+        after = self.state_projection()
         changes = []
-        for old, new in zip(before['units'], after['units']):
+        previous = {unit['id']: unit for unit in before['units']}
+        for new in after['units']:
+            old = previous.get(new['id'])
+            if old is None:
+                changes.append(new['id'] + ': joined chapter')
+                continue
             if old['pos'] != new['pos'] or old['hp'] != new['hp'] or old['inventory'] != new['inventory']:
                 changes.append(f"{new['id']}: HP {old['hp']} -> {new['hp']}, position {old['pos']} -> {new['pos']}, "
                                f"uses {[i['uses'] for i in old['inventory']]} -> {[i['uses'] for i in new['inventory']]}")
@@ -96,10 +117,14 @@ class Session:
             summary += f"; {before['phase']} -> {after['phase']}, turn {after['turn']}"
         if changes:
             summary += '; ' + '; '.join(changes)
+        if after['campaign'] and before['campaign']['chapter'] != after['campaign']['chapter']:
+            summary += '; CHAPTER: ' + after['campaign']['title']
+        if after['status'] == 'intermission':
+            summary += '; CHAPTER COMPLETE; both commanders must Ready to continue'
         if after['status'] in ('victory', 'defeat'):
             summary += '; SHARED ' + after['status'].upper()
         deaths = [u['id'] for u in after['units'] if u['dead'] and not next(
-            old for old in before['units'] if old['id'] == u['id'])['dead']]
+            (old for old in before['units'] if old['id'] == u['id']), {'dead': True})['dead']]
         if deaths:
             summary += '; Fallen: ' + ', '.join(deaths)
         if self.simulation.fault:

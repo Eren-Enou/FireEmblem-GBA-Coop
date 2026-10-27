@@ -89,8 +89,14 @@ class Model:
                     not self.syncing and self.packet['state']['status'] == 'playing' and
                     self.packet['state']['phase'] == self.team)
 
+    @property
+    def can_ready(self):
+        return bool(self.packet and set(self.peers) == set(TEAMS) and not self.pending and
+                    not self.syncing and self.packet['state']['status'] == 'intermission' and
+                    self.team not in self.packet['state']['campaign']['ready'])
+
     def command(self, action, **kwargs):
-        require(self.can_act, 'client_not_ready')
+        require(self.can_ready if action == 'ready' else self.can_act, 'client_not_ready')
         packet = self.packet
         request = {'v': VERSION, 'type': 'command', 'session': packet['session'],
                    'id': uuid.uuid4().hex, 'revision': packet['revision'],

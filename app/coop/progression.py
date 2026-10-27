@@ -5,7 +5,9 @@ def progression_changes(before, after):
     previous = {unit['id']: unit for unit in before['units']}
     changes = []
     for unit in after['units']:
-        old = previous[unit['id']]
+        old = previous.get(unit['id'])
+        if old is None:
+            continue
         parts = []
         xp = 100 * (unit['level'] - old['level']) + unit['exp'] - old['exp']
         if xp:

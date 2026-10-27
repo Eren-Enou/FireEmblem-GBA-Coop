@@ -15,7 +15,10 @@ Green now gain combat XP and level through the same player growth rules. See the
 [progression drill](docs/PROGRESSION.md) for a reproducible two-army level-up.
 Blue and Green can also heal one another with real LT staves. The separate
 [Mutual Aid encounter](docs/HEALING.md) demonstrates frontliners protecting
-healers and cross-army support. Protocol v3 requires matching host and clients.
+healers and cross-army support. The [two-chapter campaign](docs/CAMPAIGN.md) now carries permanent Blue/Green
+characters, progression and used equipment into the next battle through a shared
+ready screen. This requires a live host; disk saving is future work.
+Protocol v4 requires matching host and clients.
 [Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:

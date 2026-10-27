@@ -2,8 +2,10 @@
 
 Status: Phase 4A core XP/level/growth parity is implemented and locally tested;
 see [PROGRESSION.md](PROGRESSION.md). Phase 4B adds the narrow allied Heal/Mend
-staff slice and original [Mutual Aid encounter](HEALING.md). Campaign saves and the broader parity
-methods below remain design work, not implemented campaign features.
+staff slice and original [Mutual Aid encounter](HEALING.md). Phase 5A implements
+[live two-chapter continuity](CAMPAIGN.md) with native persistent units and two
+parties. Disk checkpoints, restart recovery and broader parity remain design
+work. Phase 5B should implement checkpoint A as a separate milestone.
 This document follows the tested [Internet transport path](INTERNET_PLAY.md).
 It preserves the full goal: two allied commanders completing multiple chapters
 with independent development, equipment and persistent ownership.
@@ -28,7 +30,7 @@ It does not establish broader campaign parity.
 | Default trading requires the same team as well as alliance | `app/engine/component_system/skill_system_base.py:Defaults.can_trade`; Blue/Green alliance alone is insufficient |
 | Recruit-to-player clears AI only for Blue | `app/engine/action.py:ChangeTeam`; Green recruitment needs controller ownership and AI updates too |
 | Party/roster queries filter `player` and persistence | `app/engine/game_state.py:get_all_units_in_party`, `get_all_player_units`; deployment/cleanup need owned-roster queries |
-| Training units are generic, nonpersistent and share one sample party | The current demo is not a usable two-army campaign roster |
+| Training units are generic, nonpersistent and share one sample party | Preserved as a demo; Phase 5A has a separate unique persistent roster and two native parties |
 | Training bootstrap clears campaign events and freezes terminal boards | `coop_demo.install_demo()` and the network adapter are scenario fixtures, not campaign startup/transition logic |
 | `GameState.save()` includes registries, event/action state and non-JSON values | Direct JSON dumping fails on a set in the probe; conversion alone would not validate restoration semantics |
 | Only combat RNG is a top-level saved random-state field, with no explicit phase field | New checkpoints must include phase/order and all RNG streams rather than assuming the current dictionary is complete |
@@ -192,8 +194,10 @@ client control and synchronized evidence.
    [Internet play](INTERNET_PLAY.md); record unverified WAN conditions honestly.
 2. Add the first parity vertical slice: both armies gain XP and level up from
    real network combat, including counters, with identical published results.
-3. Introduce persistent original rosters/two parties and two original chapters;
-   implement checkpoint A, corruption/atomicity/migration tests and host restart.
+3. Phase 5A introduces persistent original rosters/two parties and two original
+   chapters within a live host. Phase 5B separately implements checkpoint A,
+   corruption/atomicity tests and fresh-process host restart; migrations require
+   an actual subsequent schema rather than a speculative framework.
 4. Expand Equip/Use/Heal/Trade and promotion/recruitment/deployment with the matrix
    above; add checkpoint B only for supported quiescent state.
 5. Verify two clients on separate Windows PCs finish both chapters, restart the

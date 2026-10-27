@@ -1,5 +1,46 @@
 # Architecture and original engine assessment
 
+## Phase 5A live campaign continuity
+
+`app/coop/campaign.py` installs two original trusted chapters, four native unique
+persistent characters and two `PartyPrefab`/`PartyObject` identities. The existing
+procedural bootstrap supplies neutral terrain/token resources and alliances;
+the campaign supplies its own unit prefabs, geometry and scoped objective events.
+An explicit stable-ID owner map is independent of tactical team, faction, party
+and network credential. Command authority checks both owner and tactical team.
+No native engine source changes were needed for this milestone.
+
+Native `UnitObject.from_prefab(UniqueUnit)` marks characters persistent.
+`GameState.clean_up()` retains persistent unit objects and their item/skill
+registries; `LevelObject.from_prefab` reuses those same registered units during
+instance `game.start_level(next_id)`. Never call the module-level start helper
+here: it clears the singleton. `sweep`, `generic`, native level loading and
+turn-start states rebuild chapter-local event/action/board/AI/phase systems.
+RNG and UID generators continue. No public projection restores native state.
+
+Blue-only `get_all_units_in_party`/`get_all_player_units` are not used to decide
+co-op roster persistence or ownership. Native cleanup's Blue-only casual revival
+and convoy-on-death paths are avoided by an explicit campaign permadeath policy
+and disabled death convoy. Dead Green and Blue remain owned/registered with their
+items and are excluded from deployment. Native HP/mana/skill/item cleanup rules
+apply equally to both. General casual/convoy parity remains future work.
+
+Chapter 1 victory settles native events, then enters intermission. Each
+commander may `ready` once independently of phase; normal revision/digest/session
+and connected-peer gates still apply. The second vote cleans up and loads only
+the trusted next manifest chapter, settles to Blue turn 1 and publishes once
+under the session lock. No arbitrary level/event parameters or second engine
+instance are accepted. Completed chapter IDs prevent repeated completion. A
+lifecycle fault ends the session; a missing-level projection uses the last
+committed board marked fault rather than leaking partial initialization.
+
+Protocol v4 adds bounded campaign/readiness and unit ownership/party/class/skill/
+equipment metadata. The client scales the actual map into its existing map area,
+shows chapter title/objective and a roster/next-chapter/Ready intermission panel.
+Host and client progression/result diffs join by unit ID and tolerate enemies
+entering/leaving. Rendering and diffs never award rewards or own native state.
+See [CAMPAIGN.md](CAMPAIGN.md) for exact fixture, transition policy and play steps.
+
 ## Phase 4B allied healing
 
 `Simulation.heals` enumerates owned inventory spells from LT's `get_spells`,

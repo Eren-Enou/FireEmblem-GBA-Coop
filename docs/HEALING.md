@@ -5,7 +5,7 @@ Green-to-Blue healing through native Lex Talionis Heal/Mend spell combat. The
 host validates the acting army, phase, action state, actual item instance,
 class/rank/availability/charges, range and live wounded allied target before
 starting native combat. Rejections leave state and RNG unchanged. Healing never
-transfers unit ownership. Both peers must use protocol v3.
+transfers unit ownership. Both peers must use protocol v4.
 
 ## Launch and play
 

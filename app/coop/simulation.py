@@ -8,11 +8,12 @@ from app.coop.protocol import ProtocolError
 
 class Simulation:
     def __init__(self, seed=0, scenario="training", growth_method=None):
-        if scenario not in ('training', 'progression', 'healing'):
+        if scenario not in ('training', 'progression', 'healing', 'campaign'):
             raise ValueError('Unknown trusted scenario')
         if growth_method not in (None, 'Fixed', 'Random', 'Dynamic'):
             raise ValueError('Unsupported growth method')
         self.scenario = scenario
+        self.campaign = None
         os.environ['SDL_VIDEODRIVER'] = 'dummy'
         os.environ['SDL_AUDIODRIVER'] = 'dummy'
         from app.engine.codegen import source_generator
@@ -41,6 +42,9 @@ class Simulation:
         elif scenario == 'healing':
             from app.coop import healing_demo
             level_id = healing_demo.install()
+        elif scenario == 'campaign':
+            from app.coop import campaign
+            level_id = campaign.install()
         # Preserve the same objectives/events, but keep the final board for
         # clients instead of entering local chapter/title/game-over presentation.
         for event in DB.events:
@@ -57,6 +61,9 @@ class Simulation:
         elif scenario == 'healing':
             self.game.current_mode.growths = growth_method or 'Fixed'
             healing_demo.initialize(self.game)
+        elif scenario == 'campaign':
+            self.game.current_mode.growths = growth_method or 'Fixed'
+            self.campaign = campaign.Campaign(self.game)
         elif growth_method:
             self.game.current_mode.growths = growth_method
         self.units = list(self.game.units)
@@ -86,6 +93,8 @@ class Simulation:
         if self.game.level_vars.get('coop_defeat'):
             return 'defeat'
         if self.game.level_vars.get('coop_victory'):
+            if self.campaign and self.campaign.index == 0:
+                return 'intermission'
             return 'victory'
         return 'playing'
 
@@ -114,6 +123,8 @@ class Simulation:
             self.step()
             yield
             if self.game.state.current() == 'free' and not self.game.state.temp_state:
+                if self.campaign:
+                    self.campaign.observe_result(self.game)
                 return
         raise RuntimeError('Engine did not reach a command boundary')
 
@@ -162,6 +173,19 @@ class Simulation:
         from app.engine import action, skill_system
         from app.engine.combat import interaction
         game = self.game
+        if command['action'] == 'ready':
+            if self.status != 'intermission' or not self.campaign:
+                raise ProtocolError('not_intermission')
+            try:
+                self.campaign.confirm_ready(game, team)
+                self.units = list(game.units)
+                yield from self.settle_steps()
+            except ProtocolError:
+                raise
+            except Exception as exc:
+                self.fault = True
+                raise RuntimeError('Campaign transition failed') from exc
+            return
         if self.status != 'playing':
             raise ProtocolError('session_finished')
         if team != game.phase.get_current():
@@ -173,7 +197,7 @@ class Simulation:
             game.state.change('ai')
         else:
             unit = game.get_unit(command['unit'])
-            if not unit or unit.team != team:
+            if not unit or unit.team != team or (self.campaign and self.campaign_owner(unit.nid) != team):
                 raise ProtocolError('not_owner')
             if not unit.position or unit.dead or unit.is_dying or unit.finished:
                 raise ProtocolError('unit_unavailable')
@@ -222,9 +246,13 @@ class Simulation:
         for unit in sorted(self.units, key=lambda u: u.nid):
             units.append({
                 'id': unit.nid, 'name': unit.name, 'team': unit.team,
+                'owner': self.campaign_owner(unit.nid), 'party': unit.party,
+                'faction': unit.faction, 'class': unit.klass, 'persistent': unit.persistent,
+                'skills': [skill.nid for skill in unit.skills],
+                'equipped': unit.get_weapon().uid if unit.get_weapon() else None,
                 'pos': list(unit.position) if unit.position else None,
                 'hp': unit.get_hp(), 'max_hp': unit.get_max_hp(),
-                'dead': bool(unit.dead or unit.is_dying or not unit.position),
+                'dead': bool(unit.dead or unit.is_dying),
                 'finished': bool(unit.finished), 'moved': bool(unit.has_moved),
                 'attacked': bool(unit.has_attacked), 'movement': int(unit.movement_left),
                 'level': unit.level, 'exp': unit.exp, 'stats': dict(unit.stats),
@@ -235,12 +263,20 @@ class Simulation:
                 'moves': [list(p) for p in self.moves(unit)] if self.status == 'playing' else [],
                 'attacks': self.attacks(unit) if self.status == 'playing' else [],
                 'heals': self.heals(unit) if self.status == 'playing' else []})
-        return {'scenario': 'coop_' + self.scenario + '/v1', 'ruleset': self.ruleset,
-                'width': 15, 'height': 10,
+        width, height = game.level.tilemap.width, game.level.tilemap.height
+        return {'campaign': self.campaign.projection(game) if self.campaign else None,
+                'scenario': 'coop_' + self.scenario + '/v1', 'ruleset': self.ruleset,
+                'width': width, 'height': height,
                 'terrain': [[{'9': 'wall', '2': 'forest'}.get(terrain.get((x, y)), 'plain')
-                             for x in range(15)] for y in range(10)],
+                             for x in range(width)] for y in range(height)],
                 'phase': game.phase.get_current(), 'turn': game.turncount,
-                'status': self.status, 'objective': 'Defeat all Red units; both allied armies must survive.',
+                'status': self.status, 'objective': game.level.objective['simple'],
                 'rng': {'seed': static_random.r.seed, 'combat': static_random.r.combat_random.state,
                         'growth': static_random.r.growth_random.state, 'other': static_random.r.other_random.state},
                 'units': units}
+
+    def campaign_owner(self, nid):
+        if self.campaign:
+            from app.coop.campaign import OWNERS
+            return OWNERS.get(nid)
+        return None

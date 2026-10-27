@@ -1,10 +1,10 @@
-"""Version 3, bounded JSON only. No engine imports or executable serialization."""
+"""Version 4, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
 import math
 import re
 
-VERSION = 3
+VERSION = 4
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -87,7 +87,7 @@ def validate_request(value):
     elif kind == 'command':
         action = value.get('action')
         extra = {'move': ('unit', 'pos'), 'attack': ('unit', 'item', 'target'),
-                 'heal': ('unit', 'item', 'target'), 'wait': ('unit',), 'end_phase': ()}
+                 'heal': ('unit', 'item', 'target'), 'wait': ('unit',), 'end_phase': (), 'ready': ()}
         require(type(action) is str and action in extra, 'unknown_action')
         fields(value, ('v', 'type', 'session', 'id', 'revision', 'phase', 'digest', 'action') + extra[action])
         for key in ('session', 'id', 'phase', 'digest'):
@@ -108,7 +108,7 @@ def validate_request(value):
 
 
 def validate_state(value):
-    fields(value, ('scenario', 'ruleset', 'width', 'height', 'terrain', 'phase',
+    fields(value, ('campaign', 'scenario', 'ruleset', 'width', 'height', 'terrain', 'phase',
                    'turn', 'status', 'objective', 'rng', 'units'))
     for key in ('scenario', 'ruleset', 'phase', 'objective'):
         string(value[key], 512)
@@ -116,7 +116,21 @@ def validate_state(value):
     integer(value['height'], 1, 64)
     integer(value['turn'], 1)
     require(value['phase'] in ('player', 'other', 'enemy', 'enemy2'))
-    require(value['status'] in ('playing', 'victory', 'defeat', 'fault'))
+    require(value['status'] in ('playing', 'intermission', 'victory', 'defeat', 'fault'))
+    campaign = value['campaign']
+    if campaign is not None:
+        fields(campaign, ('id', 'chapter', 'title', 'next_title', 'completed', 'ready'))
+        for key in ('id', 'chapter', 'title'):
+            string(campaign[key])
+        if campaign['next_title'] is not None:
+            string(campaign['next_title'])
+        require(type(campaign['completed']) is list and len(campaign['completed']) <= 16)
+        for chapter in campaign['completed']:
+            string(chapter)
+        require(len(set(campaign['completed'])) == len(campaign['completed']))
+        require(type(campaign['ready']) is list and len(campaign['ready']) <= 2)
+        require(all(t in TEAMS for t in campaign['ready']) and len(set(campaign['ready'])) == len(campaign['ready']))
+    require(value['status'] != 'intermission' or campaign is not None and campaign['next_title'] is not None)
     fields(value['rng'], ('seed', 'combat', 'growth', 'other'))
     for number in value['rng'].values():
         integer(number)
@@ -127,11 +141,22 @@ def validate_state(value):
     require(type(value['units']) is list and len(value['units']) <= 100)
     ids, item_ids, occupied = set(), set(), set()
     for unit in value['units']:
-        fields(unit, ('id', 'name', 'team', 'pos', 'hp', 'max_hp', 'dead', 'finished',
+        fields(unit, ('owner', 'party', 'faction', 'class', 'persistent', 'skills', 'equipped', 'id', 'name', 'team', 'pos', 'hp', 'max_hp', 'dead', 'finished',
                       'moved', 'attacked', 'movement', 'level', 'exp', 'stats', 'wexp', 'mana', 'max_mana',
                       'inventory', 'moves', 'attacks', 'heals'))
         string(unit['id'])
         string(unit['name'])
+        require(unit['owner'] is None or unit['owner'] in TEAMS)
+        for key in ('party', 'faction'):
+            if unit[key] is not None:
+                string(unit[key])
+        string(unit['class'])
+        require(type(unit['persistent']) is bool)
+        require(type(unit['skills']) is list and len(unit['skills']) <= 100)
+        for skill in unit['skills']:
+            string(skill)
+        if unit['equipped'] is not None:
+            integer(unit['equipped'])
         require(unit['id'] not in ids)
         ids.add(unit['id'])
         require(unit['team'] in ('player', 'other', 'enemy', 'enemy2'))
@@ -168,6 +193,7 @@ def validate_state(value):
             string(item['name'])
             if item['uses'] is not None:
                 integer(item['uses'], 0, 10000)
+        require(unit['equipped'] is None or unit['equipped'] in {i['uid'] for i in unit['inventory']})
         require(type(unit['moves']) is list and len(unit['moves']) <= 4096)
         for pos in unit['moves']:
             position(pos, value['width'], value['height'])

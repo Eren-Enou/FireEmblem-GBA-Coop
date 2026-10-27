@@ -20,9 +20,11 @@ def scripted_step(connection, operation):
         return False
     state = model.packet['state']
     kind = operation['action']
+    if kind == 'wait_revision':
+        return model.packet['revision'] >= operation['revision']
     if kind == 'wait_for':
         return all(state.get(key) == value for key, value in operation.items() if key != 'action')
-    if not model.can_act:
+    if not (model.can_ready if kind == 'ready' else model.can_act):
         return False
     if kind in ('advance', 'attack_nearest'):
         unit = next(u for u in state['units'] if u['id'] == operation['unit'])
@@ -91,7 +93,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
             disconnect(exc)
 
     def command(action, **args):
-        if model.can_act and not error:
+        if (model.can_ready if action == 'ready' else model.can_act) and not error:
             send(model.command(action, **args))
 
     try:
@@ -105,6 +107,8 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 if script is not None:
                     raise
             state = model.packet['state']
+            tile = min(TILE, 600 // state['width'], 400 // state['height'])
+            continuation = 'ready' if state['status'] == 'intermission' else 'end_phase'
             units = {u['id']: u for u in state['units']}
             unit = units.get(selected)
             if unit and not unit['pos']:
@@ -121,7 +125,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                         model.syncing = True
                         send({'v': VERSION, 'type': 'sync'})
                     elif event.key == pygame.K_e:
-                        command('end_phase')
+                        command(continuation)
                     elif event.key == pygame.K_w and unit and unit['team'] == model.team and not unit['finished']:
                         command('wait', unit=unit['id'])
                     elif pygame.K_1 <= event.key <= pygame.K_9:
@@ -134,14 +138,19 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                         continue
                     mouse = event.pos
                     if buttons['end_phase'].collidepoint(mouse):
-                        command('end_phase')
+                        command(continuation)
                     elif buttons['wait'].collidepoint(mouse) and unit and unit['team'] == model.team and not unit['finished']:
                         command('wait', unit=unit['id'])
                     elif buttons['sync'].collidepoint(mouse) and not error:
                         model.syncing = True
                         send({'v': VERSION, 'type': 'sync'})
+                    elif state['status'] == 'intermission':
+                        roster = [u for u in units.values() if u['owner'] is not None]
+                        row = (mouse[1] - 250) // 48
+                        if 48 <= mouse[0] < 620 and 0 <= row < len(roster):
+                            selected, item_index = roster[row]['id'], 0
                     else:
-                        pos = [(mouse[0] - LEFT) // TILE, (mouse[1] - TOP) // TILE]
+                        pos = [(mouse[0] - LEFT) // tile, (mouse[1] - TOP) // tile]
                         clicked = next((u for u in units.values() if u['pos'] == pos), None)
                         choice = target_choice(unit, clicked, item_index) if unit and clicked and unit['team'] == model.team else None
                         if choice:
@@ -169,13 +178,13 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
 
             # Only original geometric tokens and system fonts are used here.
             screen.fill((19, 25, 37))
-            text('TWO BANNERS / CO-OP', 32, 22, big=True)
+            text(state['campaign']['title'] if state['campaign'] else 'TWO BANNERS / CO-OP', 32, 22, big=True)
             text(f"You: {NAMES[model.team]}   Turn {state['turn']}   Phase: {NAMES[state['phase']]}   {state['status'].upper()}", 32, 64)
             connected = ', '.join(NAMES[t] for t in model.peers) or 'none'
             text(f"Connected: {connected}   Revision {model.packet['revision']}   Check {model.packet['digest'][:12]}", 32, 90)
             for y, row in enumerate(state['terrain']):
                 for x, terrain in enumerate(row):
-                    rect = pygame.Rect(LEFT + x * TILE, TOP + y * TILE, TILE - 1, TILE - 1)
+                    rect = pygame.Rect(LEFT + x * tile, TOP + y * tile, tile - 1, tile - 1)
                     color = {'wall': (48, 58, 72), 'forest': (39, 86, 66), 'plain': (70, 104, 81)}[terrain]
                     pygame.draw.rect(screen, color, rect)
                     if unit and model.can_act and unit['team'] == model.team and [x, y] in unit['moves']:
@@ -184,7 +193,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 if not current['pos']:
                     continue
                 x, y = current['pos']
-                cx, cy = LEFT + x * TILE + TILE // 2, TOP + y * TILE + TILE // 2
+                cx, cy = LEFT + x * tile + tile // 2, TOP + y * tile + tile // 2
                 color = COLORS[current['team']] if not current['finished'] else (117, 127, 139)
                 pygame.draw.circle(screen, color, (cx, cy - 2), 13)
                 choice = target_choice(unit, current, item_index) if unit and model.can_act and unit['team'] == model.team else None
@@ -224,14 +233,25 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 text(f"Mana {unit['mana']}/{unit['max_mana']}", 670, 592)
                 weapons = ', '.join(f'{key}:{value}' for key, value in unit['wexp'].items() if float(value))
                 text('WEXP ' + weapons, 670, 616)
+            if state['status'] == 'intermission':
+                pygame.draw.rect(screen, (22, 32, 47), (32, 135, 600, 350))
+                text('CHAPTER COMPLETE', 48, 150, big=True)
+                text('Next: ' + state['campaign']['next_title'], 48, 190)
+                text('Ready: ' + ', '.join(NAMES[t] for t in state['campaign']['ready']), 48, 218)
+                roster = [u for u in units.values() if u['owner'] is not None]
+                for row, member in enumerate(roster):
+                    items = ', '.join(i['name'] + ':' + str(i['uses']) for i in member['inventory'])
+                    text(f"{NAMES[member['owner']]} {member['name']} L{member['level']} XP {member['exp']} " + ('FALLEN' if member['dead'] else 'SURVIVED'), 48, 255 + row*48, COLORS[member['team']])
+                    text(items, 48, 276 + row*48)
+                text('Select a roster row; both Ready [E] to continue', 48, 460)
             mouse_x, mouse_y = pygame.mouse.get_pos()
-            hover = ((mouse_x - LEFT) // TILE, (mouse_y - TOP) // TILE)
+            hover = ((mouse_x - LEFT) // tile, (mouse_y - TOP) // tile)
             tile_hint = f'Tile {hover}: ' if 0 <= hover[0] < state['width'] and 0 <= hover[1] < state['height'] else ''
-            text(tile_hint + 'Click a unit to inspect/select', 32, 527)
+            text(state['objective'][:63] if state['campaign'] else tile_hint + 'Click a unit to inspect/select', 32, 527)
             for kind, rect in buttons.items():
-                enabled = not error and (kind == 'sync' or model.can_act and (kind != 'wait' or unit and unit['team'] == model.team and not unit['finished']))
+                enabled = not error and (kind == 'sync' or kind == 'end_phase' and model.can_ready or model.can_act and (kind != 'wait' or unit and unit['team'] == model.team and not unit['finished']))
                 pygame.draw.rect(screen, (53, 76, 100) if enabled else (30, 35, 45), rect, border_radius=5)
-                text({'wait': 'Wait [W]', 'end_phase': 'End phase [E]', 'sync': 'Resync [R]'}[kind], rect.x + 12, rect.y + 8)
+                text({'wait': 'Wait [W]', 'end_phase': 'Ready [E]' if continuation == 'ready' else 'End phase [E]', 'sync': 'Resync [R]'}[kind], rect.x + 12, rect.y + 8)
             for i, line in enumerate(textwrap.wrap(model.message, 62)[:3]):
                 text(line, 32, 608 + i * 21, (242, 199, 119))
             text('RECENT CHARACTER GROWTH', 32, 687, (143, 213, 239))

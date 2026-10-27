@@ -102,13 +102,28 @@ durable saves, verified WAN play and full tactical/campaign parity remain open.
 Recommended next gameplay slice: personal Vulnerary use and item/action previews,
 with narrow native-engine commands and equivalent recovery/authority tests.
 
-## Remaining Phase 4 tactical/campaign parity (not implemented)
+## Phase 5A: persistent armies and first campaign
+
+- [x] Native unique persistent Blue/Green characters and distinct parties/factions.
+- [x] Two original linked encounters: The First Alliance and Holding the Line.
+- [x] Native object/item/skill continuity, progression and used equipment retained.
+- [x] Explicit permadeath/HP/mana policy and no dead-character redeployment.
+- [x] Dual-ready intermission and one locked trusted chapter transition.
+- [x] Protocol-v4 campaign/roster state and variable-map/client presentation.
+- [x] Real two-client full campaign and intermission/transition failure coverage.
+- [ ] Two-human usability and separate-PC campaign play remain unverified.
+
+Next Phase 5B: implement strict chapter-boundary checkpoint A with atomic file
+generations, corruption/interrupted-write tests, fresh-process startup restore
+and new invitations. No disk saves or restart recovery exist in Phase 5A.
+
+## Remaining tactical/campaign parity (not implemented)
 
 Implementation methods are now documented in
 [CAMPAIGN_AND_PARITY.md](CAMPAIGN_AND_PARITY.md), backed by a reproducible readiness
 audit. These design tasks are complete; the mechanics/checkpoint gates below are not.
 
-- Independent persistent rosters, equipment and inventory management.
+- Broader equipment/inventory management and deployment; persistent independent rosters now exist.
 - Recruitment, promotions and persistent ownership changes; core Green combat XP/growth is complete.
 - Broader item use/healing abilities, supports, trade, paired interactions and permadeath audits; Heal/Mend is complete.
 - Shared campaign saves with an explicit phase/event/RNG schema.

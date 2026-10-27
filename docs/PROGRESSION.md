@@ -40,9 +40,9 @@ No reward formula, threshold or stat algorithm was replaced:
 The host alone executes rewards, growth RNG and stat actions. Read-only snapshot
 differences provide result text and the client growth panel. Clients never roll
 stats or submit rewards. Snapshots already contained XP/levels/stats/HP/max HP,
-durability and all recorded RNG streams. **Protocol v3** carries healing choices alongside
+durability and all recorded RNG streams. **Protocol v4** carries healing choices alongside
 mana/max mana and weapon-XP decimal strings, preserving fractional engine values
-without JSON float payloads. Unknown command fields and old v1/v2 peers reject.
+without JSON float payloads. Unknown command fields and old v1/v2/v3 peers reject.
 Update host and both clients together; see [NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md).
 
 ## Separate original growth drill

@@ -1,6 +1,69 @@
 # Environment and verification
 
-## Phase 4B healing verification
+## Phase 5A campaign verification
+
+Use the existing Python 3.12 environment from the actual repository root. OpenSSL
+CLI must be on PATH for TLS identity tests. No new dependencies are required.
+
+```powershell
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_campaign -q
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_campaign app.tests.test_coop_healing app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_campaign.CampaignProcessTests app.tests.test_coop_healing.HealingUITests app.tests.test_coop_healing.HealingProcessTests -q
+.venv\Scripts\python.exe -u utilities/smoke_network.py --tls --campaign
+```
+
+Executed October 27, 2026: **169 passed in 230.143 seconds** (15 campaign plus
+154 selected prior checks). Initial 13 campaign tests passed in 66.069 seconds;
+the final suite includes two added ownership/schema checks. The six existing
+contract/model checks passed in 1.551 seconds. After final roster-row selection/
+token-centering polish, three focused graphical/targeting checks passed in
+**18.956 seconds**. Full repository suite not run. Existing OpenSSL directory
+`C:\Ruby33-x64\msys64\usr\bin` was prepended to this process's PATH only.
+The native continuity test then passed again in **4.930 seconds**, including
+explicit party-object identity and all-stream RNG continuity assertions.
+
+Campaign acceptance uses real native unique units, combat/healing, AI and scoped
+objective events. The seed-0 two-client run completes Chapter 1 at revision 18,
+turn 4, loads Chapter 2 at revision 20 and wins at revision 38/turn 4. Compare
+complete packets after every action, not just digest strings. Both armies gain
+XP and real levels; items lose uses. At transition compare native unit identity,
+item identity/data/UIDs, levels/XP/stats, growths/points/caps, weapon XP,
+equipment, skills, personal fields and death state; never reconstruct from the
+public snapshot. A native scripted-hit probe in Chapter 2 confirms retained
+Strength produces 11 damage (starting Strength 7 produces 10).
+
+Other checks reject continuation outside intermission, duplicate votes/IDs,
+stale bases, forged chapter/team/event fields, invalid owner control even after
+a tactical-team change, malformed metadata/equipment and old protocol versions.
+Readiness is phase independent but peer gated. Rejoin during intermission
+retains the vote/state without replay; disconnect before the second vote pauses
+transition; disconnect during locked loading rejoins the one completed result.
+Dead Blue/Green characters stay registered with their items and never redeploy.
+Mana follows native reset settings, and permanent inert skill data/fields persist.
+An injected lifecycle fault publishes a valid terminal last-board packet and
+freezes commands. Training, progression, healing, shared battle outcomes, TLS,
+liveness, movement, save round trip and XP/timing regressions remain green.
+
+The three-process campaign smoke generates a deterministic command plan in a
+closed preliminary harness, then starts a fresh host process and two independent
+pygame clients. Only legal public commands drive gameplay. Every published
+snapshot must match on both clients, including new terrain/enemies/readiness.
+No independent live LT singletons coexist within a process. Both TCP and TLS
+runs compared 39 snapshots through revision 38. Reports/PNGs/credentials remain
+ignored under `artifacts/`; final TLS evidence is recorded in
+[PROGRESS.md](PROGRESS.md). A separate three-process capture stopped at
+intermission revision 18 and both client packets matched. Intermission and
+Chapter 2 renders were visually inspected; scripts do not constitute mouse or
+two-human testing.
+
+Manual local/TLS instructions, fixture values, transition/death rules and tactics
+are in [CAMPAIGN.md](CAMPAIGN.md). Complete Chapter 1, inspect each roster row,
+press Ready on one client and verify it waits, then Ready on the other and
+compare Chapter 2 levels/equipment on both. Rejoin with the same private
+invitation around intermission. Separate-PC/WAN, human usability, casual revival,
+general custom components and host restart recovery remain unverified/unsupported.
+
+## Earlier Phase 4B healing verification
 
 Use the existing Python 3.12 environment from the actual `FE-GBA-Coop` repository
 root. OpenSSL CLI must be on PATH for TLS identities. This adds no dependencies.

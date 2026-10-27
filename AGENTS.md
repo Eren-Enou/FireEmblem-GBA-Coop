@@ -17,7 +17,9 @@ separate-PC Internet play remains unverified. Phase 4A adds human-army XP/mana
 eligibility and player growth selection, real fixed/random/dynamic combat level-ups,
 weapon XP/mana projections and a separate progression drill. Phase 4B adds
 protocol-v3 Heal/Mend staff commands, allied healing hints/UI and the separate
-Mutual Aid scenario. Campaign
+Mutual Aid scenario. Phase 5A adds native persistent unique characters, distinct
+Blue/Green parties and a live two-chapter campaign with dual-ready intermission.
+Protocol v4 carries campaign/roster metadata and variable maps. Campaign disk
 saves and full tactical parity are not implemented; concrete engine-based methods and gates are documented.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
@@ -67,11 +69,23 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   training: 95 starting XP and 40 human HP are declared fixture initial conditions,
   not rewards or normal campaign defaults. Keep `healing_demo.py` separate too;
   its injured frontliners, Cleric healers and two chokepoints are original fixture
-  conditions. Protocol v3 requires matching clients.
+  conditions. Protocol v4 requires matching clients.
 - Healing is a narrow Heal/Mend spell slice: delegate availability/rank/range/
   target restrictions and all effects to LT. Never equip non-equippable staves,
   transfer target ownership, accept client healing amounts, or turn `heal` into
   arbitrary item/event execution. No native engine edits were needed for Phase 4B.
+- Keep `campaign.py` as the trusted manifest/bootstrap for live continuity. Reuse
+  native unique units, registry, cleanup and instance `game.start_level`; never
+  call module-level `game_state.start_level` during transition (it clears the game),
+  create a second live Simulation, reset UIDs, or rebuild units from display JSON.
+  Explicit ownership must agree with command authority independently of team.
+  Separate Blue/Green parties and factions remain distinct. The campaign uses
+  permadeath with convoy-on-death disabled; casual revival is not supported.
+- Both commanders ready at intermission, under normal revision/session checks.
+  Only the trusted next manifest chapter may load, under the existing session lock.
+  Native cleanup hooks/HP recovery apply once. Publish after settlement; lifecycle
+  failure freezes the session. Use ID-based diffs when the chapter roster changes.
+  Read [campaign instructions](docs/CAMPAIGN.md) before extending this lifecycle.
 - Hold the session lock across cooperative engine-step yields and publication.
   Heartbeat/read tasks may run between steps but must never access engine state.
   Do not put LT simulation in independent threads or automatically replay a
