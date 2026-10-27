@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 class Defaults():
     @staticmethod
     def can_select(unit) -> bool:
-        return unit.team == 'player'
+        from app.engine.human_control import is_human_team
+        return is_human_team(unit.team)
 
     @staticmethod
     def check_ally(unit1, unit2) -> bool:

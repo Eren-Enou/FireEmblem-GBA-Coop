@@ -1,3 +1,14 @@
+# Local cooperative experiment
+
+Run `.venv\Scripts\python.exe run_coop.py` for the original Blue -> Green -> Red
+hot-seat test map. Two allied armies share the battlefield against the existing
+enemy AI. See [TESTING.md](TESTING.md) for controls, setup and verification,
+[ARCHITECTURE.md](ARCHITECTURE.md) for the engine assessment, and
+[ROADMAP.md](ROADMAP.md) / [PROGRESS.md](PROGRESS.md) for scope and status.
+Networking and campaign progression are not implemented.
+
+---
+
 **Lex Talionis** is a game engine and editor for creating your own custom Fire Emblem fangame. If you've wanted to make your own Fire Emblem fangame but were fed up with the hackery that's required to master ROM-hacking, or you just want to work with total control over the code itself, **Lex Talionis** is for you.
 
 ![TitleScreen](/utilities/readme/title_screen.png)

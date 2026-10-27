@@ -79,6 +79,10 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# Local development outputs
+.venv/
+artifacts/
+
 # vscode config
 .vscode
 

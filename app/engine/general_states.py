@@ -27,6 +27,7 @@ from app.engine.selection_helper import SelectionHelper
 from app.engine.abilities import ABILITIES, PRIMARY_ABILITIES, OTHER_ABILITIES, TradeAbility, SupplyAbility
 from app.engine.input_manager import get_input_manager
 from app.engine.fluid_scroll import FluidScroll
+from app.engine import human_control
 from app.engine.utils import garbage
 from app.utilities import threads
 
@@ -188,7 +189,7 @@ class TurnChangeState(MapState):
                 if DB.constants.value('pairup'):
                     self.handle_paired()
             else:
-                game.state.change('ai')
+                game.state.change('free' if human_control.is_human_team(game.phase.get_current()) else 'ai')
                 game.state.change('status_upkeep')
                 game.state.change('phase_change')
                 # EVENTS TRIGGER HERE
@@ -335,7 +336,9 @@ class FreeState(MapState):
             autoend_turn = False
         if not any(unit.position for unit in game.units):
             autoend_turn = False
-        for unit in game.get_player_units():
+        for unit in game.get_all_units():
+            if unit.team != game.phase.get_current():
+                continue
             if not skill_system.can_select(unit):
                 continue
             if not unit.finished:
@@ -367,7 +370,7 @@ class FreeState(MapState):
             cur_pos = game.cursor.position
             cur_unit = game.board.get_unit(cur_pos)
             if cur_unit and not cur_unit.finished and 'Tile' not in cur_unit.tags and game.board.in_vision(cur_unit.position):
-                if skill_system.can_select(cur_unit) and (not DB.constants.value('initiative') or game.initiative.get_current_unit() is cur_unit):
+                if human_control.selection_allowed(cur_unit) and skill_system.can_select(cur_unit) and (not DB.constants.value('initiative') or game.initiative.get_current_unit() is cur_unit):
                     game.cursor.cur_unit = cur_unit
                     get_sound_thread().play_sfx('Select 3')
                     game.state.change('move')
@@ -407,7 +410,7 @@ class FreeState(MapState):
     def _select_next_available_unit(self):
         avail_units = [
             u for u in game.units
-            if u.team == 'player'
+            if u.team == game.phase.get_current()
             and u.position
             and not u.finished
             and skill_system.can_select(u)
@@ -460,11 +463,11 @@ class OptionMenuState(MapState):
         options = ['Unit', 'Objective', 'Options']
         info_desc = ['Unit_desc', 'Objective_desc', 'Options_desc']
         ignore = [False, False, False]
-        if game.current_mode.permadeath:
+        if game.current_mode.permadeath and not game.game_vars.get('_local_coop_demo'):
             options.append('Suspend')
             info_desc.append('Suspend_desc')
             ignore.append(False)
-        else:
+        elif not game.game_vars.get('_local_coop_demo'):
             options.append('Save')
             info_desc.append('Save_desc')
             ignore.append(False)
@@ -2776,6 +2779,9 @@ class AIState(MapState):
         phase.fade_in_phase_music()
 
     def get_next_unit(self):
+        # Explicitly owned armies must never be played by end-turn's AI pass.
+        if '_human_teams' in game.game_vars and human_control.is_human_team(game.phase.get_current()):
+            return None
         # Initiative way
         if DB.constants.value('initiative'):
             current_unit = game.initiative.get_current_unit()

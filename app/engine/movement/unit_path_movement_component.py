@@ -117,7 +117,8 @@ class UnitPathMovementComponent(MovementComponent):
             # doesn't put you in the position you tried to go to originally
             action.do(action.SetPosition(self.unit, self.unit.position))  
             action.do(action.HasAttacked(self.unit))
-            if self.unit.team == 'player':
+            from app.engine.human_control import is_human_team
+            if is_human_team(self.unit.team):
                 game.state.clear()
                 game.state.change('free')
                 game.state.change('wait')

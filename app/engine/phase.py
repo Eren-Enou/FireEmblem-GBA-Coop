@@ -139,6 +139,12 @@ class PhaseIn():
                 game.cursor.set_pos(game.memory['previous_cursor_position'])
             else:
                 game.cursor.autocursor()
+        else:
+            from app.engine.human_control import is_human_team
+            if is_human_team(self.name):
+                units = [u for u in game.get_all_units() if u.team == self.name]
+                if units:
+                    game.cursor.set_pos(units[0].position)
 
         # Always prefer a banner matching the team's combat color, whether that color
         # came from the team editor or from a runtime change; combat_color_diverged()
