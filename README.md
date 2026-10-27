@@ -2,10 +2,16 @@
 
 Run `.venv\Scripts\python.exe run_coop.py` for the original Blue -> Green -> Red
 hot-seat test map. Two allied armies share the battlefield against the existing
-enemy AI. See [TESTING.md](TESTING.md) for controls, setup and verification,
-[ARCHITECTURE.md](ARCHITECTURE.md) for the engine assessment, and
-[ROADMAP.md](ROADMAP.md) / [PROGRESS.md](PROGRESS.md) for scope and status.
+enemy AI. See [testing](docs/TESTING.md) for controls, setup and verification,
+[architecture](docs/ARCHITECTURE.md) for the engine assessment, and
+[roadmap](docs/ROADMAP.md) / [progress](docs/PROGRESS.md) for scope and status.
 Networking and campaign progression are not implemented.
+
+Development is maintained at [Eren-Enou/FireEmblem-GBA-Coop](https://github.com/Eren-Enou/FireEmblem-GBA-Coop).
+`origin` is this GitHub repository; `upstream` is the original
+[Lex Talionis / LT-Maker engine](https://gitlab.com/rainlash/lt-maker).
+See [AGENTS.md](AGENTS.md) for the milestone workflow and
+[asset policy](docs/ASSET_POLICY.md) for licensing and publication constraints.
 
 ---
 

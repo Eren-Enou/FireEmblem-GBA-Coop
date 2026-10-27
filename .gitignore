@@ -89,3 +89,30 @@ artifacts/
 # Cython compilation results
 *.c
 *.pyd
+
+# Don't publish proprietary game images
+*.gba
+*.iso
+*.ciso
+
+# Local secrets and private development materials (never stage manually)
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+local_assets/
+private_assets/
+
+# Test and analysis outputs
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log

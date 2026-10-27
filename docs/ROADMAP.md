@@ -1,5 +1,15 @@
 # Roadmap
 
+## Repository maintenance (established)
+
+- [x] GitHub `origin` and original Lex Talionis `upstream` verified.
+- [x] Canonical progress, roadmap, testing and architecture under `docs/`.
+- [x] Goals, conventions and test/document/commit/push workflow in `AGENTS.md`.
+- [x] Existing local prototype committed on GitHub (`36f6552dd`).
+- [x] Preserve attribution and document inherited-asset audit boundary.
+- Ongoing: after every completed, tested milestone update the records, audit the
+  staged diff, commit, push to origin and verify the remote branch revision.
+
 ## Phase 0: environment and assessment
 
 - [x] Inspect installed upstream engine and pin its baseline commit.

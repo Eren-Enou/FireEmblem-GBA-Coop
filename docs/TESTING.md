@@ -77,3 +77,59 @@ supported `default.ltproj` for editor use and the co-op launcher. Do not mark th
 old fixture migrated or silently replace its missing art.
 
 Test results and remaining limitations are recorded in PROGRESS.md.
+
+## Latest verification — October 27, 2026
+
+The repository-maintenance milestone changed documentation and ignore rules only.
+Code generation followed by the automated command above passed **73 tests in
+28.443 seconds** on the existing Windows/Python 3.12.6 environment. The original
+prototype's driver and editor smoke checks passed earlier on the same date;
+they were not repeated for this documentation change. Full-suite, networking and
+internet behavior remain untested.
+
+Publication validation also passed: 8 staged Markdown/ignore files including
+renames, 20 resolving project-document links, a clean staged whitespace check,
+no matching credential signatures, no tracked private/local output paths and
+unchanged original license/credits. This does not clear inherited assets or
+constitute a full historical secret scan.
+
+## Milestone publication procedure
+
+Run from the actual project checkout, which has its own `.git` directory:
+
+```powershell
+git rev-parse --show-toplevel
+git remote -v
+git fetch origin
+git status --short
+git diff --cached --name-status
+git diff --cached --stat
+git diff --cached --check
+git ls-files .venv artifacts local_assets private_assets
+git check-ignore .venv/probe artifacts/probe.png .env local_assets/probe.png private_assets/probe.png example.gba example.iso example.ciso
+```
+
+Expected remotes: GitHub `Eren-Enou/FireEmblem-GBA-Coop` as `origin`, rainlash's
+GitLab `lt-maker` as `upstream`. The tracked-local-files command should print
+nothing; check-ignore should list every probe path. The probes need not exist.
+
+Review the staged content as well as filenames for credentials and proprietary
+content. For this maintenance milestone, only Markdown and `.gitignore` may be
+staged; no runtime source, license/credits changes, media, ROMs or local artifacts.
+Check the authored Markdown's local links resolve after moving files to `docs/`.
+These checks cover the new staged change, not a full historical licensing or
+secret audit. See [asset policy](ASSET_POLICY.md).
+
+After relevant tests and documentation are complete, commit explicit reviewed
+paths and push the intended branch to origin. For the current main branch:
+
+```powershell
+git push origin HEAD:main
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+git status --short
+```
+
+The two commit hashes must match. Do not force-push or claim success without
+remote verification. Record actual failures if publishing is blocked. Subsequent
+task branches should use their own explicit destination instead of `main`.

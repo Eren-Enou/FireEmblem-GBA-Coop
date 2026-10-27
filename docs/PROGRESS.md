@@ -1,5 +1,41 @@
 # Progress — October 27, 2026
 
+## Repository maintenance milestone
+
+- Canonical project repository: `https://github.com/Eren-Enou/FireEmblem-GBA-Coop`.
+  Verified `origin` points there and `upstream` still points to
+  `https://gitlab.com/rainlash/lt-maker.git`; no remote reconfiguration was needed.
+- Active checkout: `FE-GBA-Coop/`, with an independent `.git`. The enclosing
+  workspace Git repository is empty and is not the publication target.
+- The completed local prototype was already committed and published as
+  `36f6552ddbc7004fdbfa7fb5e99df0907983bba3` on GitHub `main`.
+- Moved project status, roadmap, testing and architecture into `docs/`. Updated
+  README links and AGENTS.md with goals, architecture constraints, conventions
+  and the required test/document/commit/push/remote-verification workflow.
+- Preserved the existing local ROM ignore additions and added guards for common
+  credential files, private assets and test outputs. No runtime code changed.
+- Preserved original MIT license, attribution, third-party notices and upstream
+  history. [Asset policy](ASSET_POLICY.md) distinguishes inherited resources from
+  newly added files; no asset rights are assumed from the engine code license.
+- Re-ran code generation and the targeted suite: **73 passed in 28.443 seconds**
+  on October 27, 2026. Prior rendered driver/editor smoke results below remain
+  applicable; they were not rerun for these documentation/ignore-only changes.
+- Publication checks passed: 8 staged text files (including renamed documents),
+  20 resolving local documentation links, no staged media or matching credential
+  signatures, no tracked local-output paths, clean staged whitespace check, and
+  unchanged original license/credits files. This is a scoped staged-change check,
+  not a full historical secret or asset-rights audit. Remote revision verification
+  is the final step after committing and pushing this record.
+
+Current blockers: a full inherited-asset rights audit is required before any
+standalone distribution. The old test fixture's portrait migration issue remains
+as described below. No blocker to the documentation milestone or local tests is
+known. Online gameplay is unimplemented, not a verified capability.
+
+Next steps: two-person local exploratory playtest, then design the authoritative
+command/result/snapshot contract and implement the Phase 2 local-network proof
+of concept. Follow the milestone workflow in [AGENTS.md](../AGENTS.md).
+
 ## Delivered
 
 The first assignment's local experiment is implemented. One engine instance
@@ -18,7 +54,8 @@ auto-end, AUX cycling and interrupted movement have small integration changes.
 The generated skill system is regenerated from its editable source. Existing
 Blue-only behavior remains the fallback when the opt-in game var is absent.
 
-The architectural assessment is in ARCHITECTURE.md; later work is in ROADMAP.md.
+The architectural assessment is in [ARCHITECTURE.md](ARCHITECTURE.md); later work
+is in [ROADMAP.md](ROADMAP.md).
 No networking or campaign conversion was started.
 
 ## Verification
