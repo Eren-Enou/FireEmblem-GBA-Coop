@@ -1,6 +1,76 @@
 # Environment and verification
 
-## Phase 5B checkpoint verification
+## Phase 5C preparation verification
+
+Run from the actual `FE-GBA-Coop` repository root with the existing Python 3.12
+environment. OpenSSL is needed for TLS identity tests; prepend its existing
+location only for the test process:
+
+```powershell
+$env:PATH = 'C:\Ruby33-x64\msys64\usr\bin;' + $env:PATH
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_inventory_ui app.tests.test_coop_preparation app.tests.test_coop_checkpoint app.tests.test_coop_campaign app.tests.test_coop_healing app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe -u utilities/smoke_network.py --preparation
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --preparation
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --preparation --tls --recovery corrupt
+```
+
+Executed October 27, 2026: the final combined command above passed **201 tests
+in 445.337 seconds** (190 selected prior regressions + 9 preparation/native/
+process checks + 2 SDL input checks). The uninterrupted prepared campaign ended
+at **revision 58 victory / 59 identical snapshots**. The shutdown/restored
+prepared campaign ended at **new revision 29 victory / 30 + 30 identical
+snapshots**. Baseline normal/corrupt/truncated/interrupted recovery, Random and
+Dynamic native growth restoration, healing/progression/TLS and the listed engine
+regressions all passed in that command. Full repository suite not run.
+
+The earlier combined run passed 198/199 and failed the prepared checkpoint
+report comparison: Blue could exit after its own save before Green's final save
+revision arrived. The harness now waits for the shared final-save revision
+before either report; the final 201-test run verifies the corrected boundary.
+A final text-only shortening of the clipped unavailable-item label was followed
+by **2 SDL input tests passing again in 5.841 seconds**, with visual inspection of
+`artifacts/phase5c-ui-review/final-item-panel.png` rendered from the validated TLS
+acceptance final packet. All other code remained unchanged after the 201-test run.
+
+Separate verified-TLS/corrupt-current prepared recovery passed:
+`artifacts/checkpoint-smoke/run-bf0f6134/`, hosts 169508/128584, clients
+170236/136956 then 112936/170064. Histories matched **30 + 30 snapshots**; the
+new session ended at **revision 29 victory**, digest
+`316abc6e8a1e7577311c57edf718fe517ed99373f4c364473a7f86e8935abab0`.
+The restored host verified exact native recapture and reported checksum failure
+for current, then recovered generation **2**. Both generations contained the
+prepared inventory. Old tokens/session commands rejected before continuation.
+
+A separate two-test SDL input run passed in **5.701 seconds**. It drives actual
+number-key selection/U through native self-use and mouse selection of the third
+convoy row followed by T through native withdrawal, using the real Model/Session
+with a local transport harness. The test prevents invisible battle buttons from
+intercepting convoy clicks. A manually reviewed generated intermission render at
+`artifacts/phase5c-ui-review/preparation.png` shows selected Hand Axe/native stats,
+own convoy/eligibility/effects, UNSAVED notice and save/Ready controls without
+text overlap. This is automated input/render inspection, not two-human usability.
+
+The seven focused preparation checks cover native self-use/cap/last-charge removal/
+action exhaustion, phase/owner/target/item/charge/full-health rejection, malformed
+effect injection, dirty/vote/save-error/retry semantics, actual native inventory
+capacity, class/rank, unique-instance conservation, stale/duplicate requests,
+mid-map preparation rejection and a real Chapter 2 range-two Hand Axe combat.
+Two additional process cases finish both prepared chapters uninterrupted and
+through full shutdown/fresh restore, with independent graphical client histories.
+The native restored checkpoint recapture includes all supported persistent state;
+public comparisons separately check equipment, inventory, uses, convoys and RNG.
+
+Prepared tactics use both personal Vulneraries, then both armies equip Hand Axe,
+store Iron Axe/Heal and take Mend. Generation 2 and 3 both contain preparation so
+the corrupt-current acceptance recovers the same choices from previous. Two
+confirmed saves are an acceptance fixture, not a requirement for ordinary Ready.
+Earlier Phase 5A/5B revision-38 and 19+21-snapshot baseline checks remain separate.
+No two-human, physical mouse/key usability, WAN/two-PC or full-repository test
+result is claimed. Screenshots/logs/credentials/save generations stay ignored
+under `artifacts/`. See [PREPARATION.md](PREPARATION.md) for manual controls and
+explicit old-manifest incompatibility; never bypass validation to replay old saves.
+
+## Historical Phase 5B checkpoint verification
 
 Use the existing Python 3.12 environment from the actual repository root.
 OpenSSL CLI must be on PATH for TLS identities. No new dependencies are required.

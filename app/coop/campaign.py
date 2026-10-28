@@ -92,7 +92,7 @@ def install():
 
 class Campaign:
     def __init__(self, game):
-        from app.engine import action
+        from app.engine import action, item_funcs
         self.index = 0
         self.ready = set()
         self.completed = []
@@ -108,6 +108,19 @@ class Campaign:
             action.do(action.SetExp(unit, 95))
             if 'Captain' in nid:
                 action.do(action.SetHP(unit, 16))
+
+        # Allocate after the original roster to preserve existing item identities.
+        for nid in OWNERS:
+            if 'Captain' in nid:
+                unit = game.get_unit(nid)
+                item = item_funcs.create_item(unit, 'Vulnerary')
+                game.register_item(item)
+                action.do(action.GiveItem(unit, item))
+        for party in PARTIES.values():
+            for nid in ('Hand_Axe', 'Mend'):
+                item = item_funcs.create_item(None, nid)
+                game.register_item(item)
+                action.do(action.PutItemInConvoy(item, party))
 
     def observe_result(self, game):
         if game.level_vars.get('coop_victory') and not game.level_vars.get('coop_defeat'):
@@ -131,7 +144,10 @@ class Campaign:
         game.start_level(CHAPTERS[self.index])
 
     def projection(self, game):
+        from app.coop.preparation import item_view
         return {'id': ID, 'chapter': CHAPTERS[self.index], 'title': TITLES[self.index],
                 'next_title': TITLES[self.index+1] if self.index+1 < len(CHAPTERS) else None,
                 'completed': list(self.completed), 'ready': sorted(self.ready),
-                'checkpoint': dict(self.checkpoint)}
+                'checkpoint': dict(self.checkpoint),
+                'convoys': {team: [item_view(i) for i in game.parties[party].convoy]
+                            for team, party in PARTIES.items()}}

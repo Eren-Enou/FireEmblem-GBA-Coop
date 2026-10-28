@@ -224,6 +224,10 @@ class Simulation:
         if command['action'] == 'save_checkpoint':
             self.save_checkpoint()
             return
+        from app.coop.preparation import ACTIONS, prepare, consumables
+        if command['action'] in ACTIONS:
+            prepare(self, team, command)
+            return
         if command['action'] == 'ready':
             if self.status != 'intermission' or not self.campaign:
                 raise ProtocolError('not_intermission')
@@ -269,11 +273,11 @@ class Simulation:
                 game.state.change('movement')
             elif kind == 'wait':
                 unit.wait(actively_chosen=True)
-            elif kind in ('attack', 'heal'):
+            elif kind in ('attack', 'heal', 'use'):
                 choice = {'item': command['item'], 'target': command['target']}
-                legal = self.heals(unit) if kind == 'heal' else self.attacks(unit)
+                legal = consumables(self, unit) if kind == 'use' else self.heals(unit) if kind == 'heal' else self.attacks(unit)
                 if choice not in legal:
-                    raise ProtocolError('illegal_heal' if kind == 'heal' else 'illegal_attack')
+                    raise ProtocolError('illegal_' + kind)
                 item = next(i for i in unit.items if i.uid == command['item'])
                 target = game.get_unit(command['target'])
                 if kind == 'attack':
@@ -293,6 +297,7 @@ class Simulation:
 
     def snapshot(self):
         from app.utilities import static_random
+        from app.coop.preparation import consumables, item_view
         game = self.game
         terrain = game.level.tilemap.layers[0].terrain
         units = []
@@ -311,8 +316,8 @@ class Simulation:
                 'level': unit.level, 'exp': unit.exp, 'stats': dict(unit.stats),
                 'wexp': {key: str(value) for key, value in unit.wexp.items()},
                 'mana': unit.get_mana(), 'max_mana': unit.get_max_mana(),
-                'inventory': [{'uid': i.uid, 'nid': i.nid, 'name': i.name,
-                               'uses': i.data.get('uses')} for i in unit.items],
+                'inventory': [item_view(i) for i in unit.items],
+                'consumables': consumables(self, unit) if self.status == 'playing' else [],
                 'moves': [list(p) for p in self.moves(unit)] if self.status == 'playing' else [],
                 'attacks': self.attacks(unit) if self.status == 'playing' else [],
                 'heals': self.heals(unit) if self.status == 'playing' else []})

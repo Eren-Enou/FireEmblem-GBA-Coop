@@ -102,7 +102,7 @@ class CampaignAuthorityTests(unittest.TestCase):
                 self.assertIs(item, items[item.uid])
                 self.assertEqual(item.data, item_data[item.uid])
         self.assertEqual(len(game.unit_registry), 7)
-        self.assertEqual(len(game.item_registry), 7)
+        self.assertEqual(len(game.item_registry), 13)
         final = self.chapter()
         self.assertEqual(final['status'], 'victory')
         self.assertEqual(final['campaign']['completed'], ['alliance', 'holding'])

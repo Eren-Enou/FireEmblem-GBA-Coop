@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def run_smoke(output, tls=False, progression=False, healing=False, campaign=False):
+def run_smoke(output, tls=False, progression=False, healing=False, campaign=False, preparation=False):
+    if preparation:
+        campaign = True
     if sum((progression, healing, campaign)) > 1:
         raise ValueError("Choose one smoke scenario")
     folder = Path(output).resolve() / ('run-' + uuid.uuid4().hex[:8])
@@ -53,7 +55,7 @@ def run_smoke(output, tls=False, progression=False, healing=False, campaign=Fals
                  {'action': 'inspect', 'unit': 'Green_Healer'}]
     if campaign:
         from utilities.campaign_playtest import plan
-        scripts, expected_revision = plan()
+        scripts, expected_revision = plan(preparation=preparation)
         blue, green = scripts['player'], scripts['other']
     processes, logs = [], []
 
@@ -94,7 +96,7 @@ def run_smoke(output, tls=False, progression=False, healing=False, campaign=Fals
             process.wait(timeout=55)
             if process.returncode:
                 raise RuntimeError('Client failed; inspect logs under ' + str(folder))
-        reports = [json.loads((folder / (name + '-report.json')).read_text()) for name in ('blue', 'green')]
+        reports = [json.loads((folder / (name + '-report.json')).read_text(encoding='utf-8')) for name in ('blue', 'green')]
         from app.coop.protocol import validate_packet
         assert reports[0]['pid'] != reports[1]['pid'] != host.pid
         assert [r['team'] for r in reports] == ['player', 'other']
@@ -107,11 +109,14 @@ def run_smoke(output, tls=False, progression=False, healing=False, campaign=Fals
         packets = reports[0]['observed']
         assert [p['revision'] for p in packets] == list(range(len(packets)))
         final = reports[0]['final']
+        if preparation:
+            from utilities.campaign_playtest import verify_preparation
+            verify_preparation(packets)
         if campaign:
             assert final['revision'] == expected_revision
             assert final['state']['status'] == 'victory'
             assert final['state']['campaign']['completed'] == ['alliance', 'holding']
-            boundary = next(p for p in packets if p['state']['status'] == 'intermission')
+            boundary = next(p for p in reversed(packets) if p['state']['status'] == 'intermission')
             loaded = next(p for p in packets if p['state']['campaign']['chapter'] == 'holding')
             assert (boundary['state']['width'], loaded['state']['width']) == (13, 16)
             old = {u['id']: u for u in boundary['state']['units'] if u['owner']}
@@ -131,7 +136,8 @@ def run_smoke(output, tls=False, progression=False, healing=False, campaign=Fals
             assert combats, 'No real combat for ' + team
             for i in combats:
                 old, new = packets[i-1]['state']['units'], packets[i]['state']['units']
-                assert any(a['hp'] != b['hp'] for a, b in zip(old, new)), 'Combat did not change HP'
+                if not preparation:
+                    assert any(a['hp'] != b['hp'] for a, b in zip(old, new)), 'Combat did not change HP'
                 assert any(a['inventory'] != b['inventory'] for a, b in zip(old, new)), 'Combat did not consume durability'
         ai_index = next(i for i, p in enumerate(packets) if p['result'] and
                         p['result']['team'] == 'other' and p['result']['action'] == 'end_phase')
@@ -163,7 +169,7 @@ def run_smoke(output, tls=False, progression=False, healing=False, campaign=Fals
                 assert after[healer['id']]['level'] == 2
         summary = {'host_pid': host.pid, 'client_pids': [r['pid'] for r in reports],
                    'revision': final['revision'], 'digest': final['digest'],
-                   'snapshots_compared': len(packets), 'tls': tls, 'progression': progression, 'healing': healing, 'campaign': campaign, 'folder': str(folder)}
+                   'snapshots_compared': len(packets), 'tls': tls, 'progression': progression, 'healing': healing, 'campaign': campaign, 'preparation': preparation, 'folder': str(folder)}
         (folder / 'result.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
         return summary
     finally:
@@ -193,5 +199,6 @@ if __name__ == '__main__':
     parser.add_argument('--progression', action='store_true', help='Verify both armies leveling in the separate growth drill')
     parser.add_argument('--healing', action='store_true', help='Verify cross-army healing and subsequent combat')
     parser.add_argument('--campaign', action='store_true', help='Complete both original chapters with native persistent armies')
+    parser.add_argument('--preparation', action='store_true', help='Personal consumables and both armies prepare equipment')
     args = parser.parse_args()
-    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.progression, args.healing, args.campaign)))
+    print('NETWORK_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.progression, args.healing, args.campaign, args.preparation)))

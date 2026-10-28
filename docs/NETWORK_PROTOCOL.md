@@ -1,4 +1,4 @@
-# Tactical contract - version 5 with checkpoint status
+# Tactical contract - version 6 with items and preparation
 
 This is a **live tactical/campaign projection**. Checkpoint files use a separate
 native-state format; actual WAN play remains unverified. It supports loopback plaintext or optional verified TLS with
@@ -6,6 +6,25 @@ explicit remote endpoint configuration. The executable validators live in
 [`app/coop/protocol.py`](../app/coop/protocol.py). Unknown versions, fields and
 actions are rejected. No network payload is passed to pickle, eval, event script
 execution, engine save restoration or Python object construction.
+
+## Version 6 additions
+
+All packets use `v: 6`; exact field validation rejects older clients. Existing
+session/id/revision/phase/digest gates cover every new command. `use` has exact
+`unit,item,target` fields and permits only a trusted native Vulnerary self target.
+`equip`, `deposit`, `withdraw` each have exact `unit,item` fields; no owner, party,
+filename or effect data is accepted. They work only at Chapter 1 intermission
+with configured storage. Permanent ownership and explicit native party selection
+remain host responsibilities.
+
+Each inventory item now includes bounded `effect` text. Each unit includes
+`consumables`, with the same `{item,target}` shape as attack/heal hints. Campaign
+metadata includes `convoys`, exactly `player` and `other` bounded item lists;
+UIDs must be unique across all inventories and convoys. Checkpoint status also
+accepts `dirty`. Preparation clears readiness and marks dirty; only a subsequent
+saved/restored state permits Ready. Projection and commands remain JSON only.
+See [PREPARATION.md](PREPARATION.md). Earlier version-specific sections below
+record how the contract evolved; executable v6 validators are authoritative.
 
 ## Authority and process boundaries
 
@@ -53,7 +72,7 @@ enters the explicit dual-ready intermission before the next chapter.
   TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
   hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
-All messages have integer `v: 5` and a string `type`. Initial responses:
+All messages have integer `v: 6` and a string `type`. Initial responses:
 
 | Message | Other fields | Meaning |
 | --- | --- | --- |
@@ -70,7 +89,7 @@ A `command` requires these exact common fields:
 
 | Field | Type / constraint |
 | --- | --- |
-| `v`, `type` | Integer 5, string `command` |
+| `v`, `type` | Integer 6, string `command` |
 | `session` | Current host-generated session ID from the state packet |
 | `id` | 1–64 ASCII letters, digits, `_` or `-`; unique per army for this host session |
 | `revision` | Nonnegative integer copied from the current authoritative packet |
@@ -83,6 +102,10 @@ A `command` requires these exact common fields:
 | `move` | `unit`: ID, `pos`: integer `[x,y]` | Active army owns a living, selectable, unfinished unit; has not moved; destination is reachable using current LT movement/terrain budget, unoccupied and in bounds; path cost rechecked. Runs LT Move/movement states. |
 | `attack` | `unit`: ID, `item`: inventory UID, `target`: unit ID | Active army owns the available unit; weapon is actually in its inventory, equippable, available and usable; LT target/range/line-of-sight rules allow the enemy. Runs LT SimpleCombat through the existing combat state, including counters, RNG, HP, durability, death and events. |
 | `heal` | `unit`: ID, `item`: owned UID, `target`: unit ID | Active army owns a living, selectable, unfinished actor that has not attacked; owned Heal/Mend spell passes LT availability/class/rank/charges, single-target restrictions and actual target-system range/eligibility. Target must be a live ally. Runs native spell combat without equipping a staff, including HP caps, durability, XP and action consumption. |
+| `use` | `unit`, `item`, `target` | Active owner uses an available native Vulnerary on self, with normal availability, target/HP and action restrictions; native combat resolves effects and consumption. |
+| `equip` | `unit`, `item` | Intermission only with checkpoint storage; permanent owner/team/party, owned unique supported weapon and native equip eligibility. |
+| `deposit` | `unit`, `item` | Intermission only; own supported instance transfers to explicit own-party convoy (maximum 20); no copy or discard. |
+| `withdraw` | `unit`, `item` | Intermission only; unique own-convoy instance transfers to own living character subject to native inventory capacity and class/rank availability. |
 | `wait` | `unit`: ID | Active army owns the available unit. Runs normal actively-chosen LT wait and its events. |
 | `save_checkpoint` | None | At a settled configured campaign intermission only; host captures native state and chooses the path. No filename/state/component/event fields. Both peers and normal base checks required; accepted save/retry publishes saved or error status. |
 | `ready` | None | Only at campaign intermission, once per authenticated commander independent of active phase. Requires both peers and current base; the second vote atomically loads the next trusted chapter. No client-selected level, army or event fields. |
@@ -90,8 +113,8 @@ A `command` requires these exact common fields:
 
 The host independently computes legality; client movement/attack/heal hints are not
 trusted. Payloads cannot supply damage, HP, a path, random rolls, ownership or an
-event script. Movement is committed immediately, once per unit phase; v5 has no
-move-preview cancellation, canto commands, abilities, trading or arbitrary items.
+event script. Movement is committed immediately, once per unit phase; v6 has no
+move-preview cancellation, canto commands, abilities, cross-army trading or arbitrary items.
 
 Before applying a command the host also checks both seats, session, request ID,
 revision, digest and expected phase. Duplicate IDs, including rejected attempts,
@@ -121,7 +144,7 @@ Both clients receive the exact same `state` packet:
 
 | Field | Contents |
 | --- | --- |
-| `v`, `type` | Integer 5, string `state` |
+| `v`, `type` | Integer 6, string `state` |
 | `session`, `revision` | Session ID and monotonically increasing accepted-command revision |
 | `digest` | SHA-256 of canonical `state` JSON only: sorted dictionary keys, compact separators, UTF-8, no non-finite values |
 | `state` | Schema-validated tactical/campaign projection described below |
@@ -139,13 +162,13 @@ matching local engine/assets because they only present state; both must see the
 same session and fingerprint. Digests check this **projection**, not every LT
 internal registry, skill, party, event stack or campaign-save field.
 
-The progression fields introduced in v2 and retained in v5 are `mana` and `max_mana` (integers 0-10000,
+The progression fields introduced in v2 and retained in v6 are `mana` and `max_mana` (integers 0-10000,
 current <= maximum), plus `wexp` (at most 64 weapon IDs mapped to nonnegative,
 finite decimal strings <= 10000, at most 64 characters each). For example,
 `"Axe":"32.5"` preserves fractional engine modifiers without admitting JSON float
 payloads. These are read-only projections. Clients cannot submit XP, levels,
 stats, mana or weapon-XP changes; unknown command fields reject. v1 handshakes and
-packets reject rather than silently losing progression data. Use matching v5
+packets reject rather than silently losing progression data. Use matching v6
 host/clients. Version 3 adds a required `heals` choice list with the same strict
 `{item,target}` schema and inventory/target-ID checks as `attacks`. The new `heal`
 command has the exact same IDs/base fields as attack; it accepts no amount, HP,
@@ -153,7 +176,7 @@ XP, team or other effect data. Only Heal/Mend single-target spells are supported
 There is no generic Use, potion, revive, AoE, sequence, enemy-healing or ownership
 transfer capability. Moving before healing is allowed; healing consumes the
 normal action and blocks another move/attack/heal. Rejections preserve state/RNG.
-Host/clients must all use v5; v1/v2/v3/v4 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`, plus `coop_campaign/v1`;
+Host/clients must all use v6; v1/v2/v3/v4/v5 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`, plus `coop_campaign/v1`;
 scenario version and wire version are separate.
 
 Authoritative result summaries place XP changes, level-ups and stat gains before
@@ -210,7 +233,7 @@ recovery remains unsupported. See
 ## Version 5 checkpoint status (separate from save data)
 
 The required campaign object adds `checkpoint`, an exact object containing
-`status` (`disabled`, `pending`, `saved`, `error` or `restored`), nonnegative
+`status` (`disabled`, `pending`, `saved`, `error` or `restored`; v6 adds `dirty`), nonnegative
 integer `generation` and bounded `message` (1-256 characters). No native
 checkpoint payload, path, credential or key is transmitted in this field.
 Non-campaign state still uses `campaign: null`. Older v1-v4 clients must update.
@@ -254,7 +277,7 @@ startup checkpoint restoration is separately supported as described above.
 
 ## Liveness and bounded private-session service (Phase 3A)
 
-Use the same current client/host commit. Current v5 includes campaign/roster metadata, weapon XP/mana and healing choices;
+Use the same current client/host commit. Current v6 includes campaign/roster metadata, weapon XP/mana and healing choices;
 clients must understand both those fields and the existing ping/pong controls. Older
 clients must update rather than silently disabling liveness checks.
 

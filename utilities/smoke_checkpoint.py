@@ -111,9 +111,9 @@ def credential_probes(old, fresh, old_session):
     time.sleep(0.1)
 
 
-def run_smoke(output, tls=False, recovery='none'):
+def run_smoke(output, tls=False, recovery='none', preparation=False):
     from utilities.campaign_playtest import plan
-    scripts, _ = plan()  # Closed before either authoritative host process starts.
+    scripts, total = plan(preparation=preparation)  # Closed before either authoritative host process starts.
     folder = Path(output).resolve() / ('run-' + uuid.uuid4().hex[:8])
     folder.mkdir(parents=True)
     checkpoints = folder / 'checkpoints'
@@ -122,17 +122,20 @@ def run_smoke(output, tls=False, recovery='none'):
         from utilities.create_tls_identity import create_identity
         certificate, key = create_identity(folder / 'tls')
         options = ['--tls-cert', str(certificate), '--tls-key', str(key), '--server-name', 'localhost']
+    cutoff = min(script[i-1]['revision'] for script in scripts.values()
+                 for i, step in enumerate(script) if step['action'] == 'ready')
     first_scripts, next_scripts = {}, {}
     for team, script in scripts.items():
         before, after = [], []
         for step in script:
             if step['action'] == 'wait_revision':
-                phase = before if step['revision'] < 18 else after
+                phase = before if step['revision'] < cutoff else after
             if step['action'] == 'wait_for':
                 continue
-            phase.append({**step, 'revision': step['revision'] - 18} if
+            phase.append({**step, 'revision': step['revision'] - cutoff} if
                          step['action'] == 'wait_revision' and phase is after else step)
-        first_scripts[team] = before + [{'action': 'wait_for', 'status': 'intermission'}]
+        first_scripts[team] = before + [{'action': 'wait_revision', 'revision': cutoff},
+                                        {'action': 'wait_for', 'status': 'intermission'}]
         next_scripts[team] = after + [{'action': 'wait_for', 'status': 'victory'}]
     reports = []
     host_pids = []
@@ -163,7 +166,7 @@ def run_smoke(output, tls=False, recovery='none'):
         if index == 0:
             from app.coop.checkpoint import Store
             envelope, _ = Store(checkpoints).load()
-            assert envelope['generation'] == 1
+            assert envelope['generation'] == (3 if preparation else 1)
             assert reports[0][0]['final']['state']['campaign']['checkpoint']['status'] == 'saved'
             if recovery in ('corrupt', 'truncated'):
                 path = checkpoints / 'current.json'
@@ -195,21 +198,25 @@ store.save(payload)
         for key in ('owner', 'team', 'party', 'faction', 'class', 'persistent', 'level', 'exp',
                     'stats', 'hp', 'max_hp', 'wexp', 'mana', 'max_mana', 'skills', 'inventory', 'equipped', 'dead'):
             assert unit[key] == new_units[nid][key], (nid, key)
+    assert before['campaign']['convoys'] == restored['campaign']['convoys']
     assert before['rng'] == restored['rng']
     assert before['campaign']['completed'] == restored['campaign']['completed'] == ['alliance']
     assert restored['campaign']['ready'] == []
     assert restored['campaign']['checkpoint']['status'] == 'restored'
     final = reports[1][0]['final']
-    assert final['revision'] == 20 and final['state']['status'] == 'victory'
+    assert final['revision'] == total - cutoff and final['state']['status'] == 'victory'
     assert final['state']['campaign']['completed'] == ['alliance', 'holding']
     log = (folder / 'after/host.log').read_text(encoding='utf-8')
     assert 'NATIVE_CHECKPOINT_VERIFIED' in log
     if recovery in ('corrupt', 'truncated'):
         assert 'CHECKPOINT_RECOVERY current.json:' in log
+    if preparation:
+        from utilities.campaign_playtest import verify_preparation
+        verify_preparation(reports[0][0]['observed'] + reports[1][0]['observed'])
     summary = {'host_pids': host_pids, 'client_pids': [[r['pid'] for r in stage] for stage in reports],
                'snapshots_compared': [len(stage[0]['observed']) for stage in reports],
                'final_revision': final['revision'], 'digest': final['digest'], 'tls': tls,
-               'recovery': recovery, 'folder': str(folder)}
+               'recovery': recovery, 'preparation': preparation, 'folder': str(folder)}
     (folder / 'result.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
     return summary
 
@@ -219,5 +226,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', default=str(ROOT / 'artifacts/checkpoint-smoke'))
     parser.add_argument('--tls', action='store_true')
     parser.add_argument('--recovery', choices=('none', 'corrupt', 'truncated', 'interrupted'), default='none')
+    parser.add_argument('--preparation', action='store_true')
     args = parser.parse_args()
-    print('CHECKPOINT_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.recovery)))
+    print('CHECKPOINT_SMOKE_OK', json.dumps(run_smoke(args.output, args.tls, args.recovery, args.preparation)))

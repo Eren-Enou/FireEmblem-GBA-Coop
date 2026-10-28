@@ -1,5 +1,29 @@
 # Architecture and original engine assessment
 
+## Phase 5C native inventory decisions
+
+`preparation.py` gates trusted Vulnerary self-use through native availability,
+self-target restrictions and `interaction.start_combat`. Native combat applies
+HP caps, charges, removal and action completion. It supplies audited item text
+and narrowly validates equip/deposit/withdraw at settled Chapter 1 intermission.
+Ownership, explicit party, native registry identity/unique references, capacity
+and class/rank are checked before invoking native actions. Convoy actions always
+receive the permanent party ID; native `StoreItem` would use the active Blue
+party and is deliberately avoided. No upstream engine edits were needed.
+
+Preparation runs under the existing session lock. Each mutation clears votes
+and publishes dirty status; explicit save acknowledgement is required for Ready.
+The original intermission-entry autosave remains. Checkpoint capture already
+stores native inventories/convoys/equipment/uses; the schema extends trusted
+items/equipped axes and hashes preparation rules. Older Phase 5B manifests are
+incompatible and preserved, with no migration or overwrite bypass.
+
+Protocol v6 adds use/equip/deposit/withdraw, consumable target hints, item effect
+text, both separate convoys and dirty status. The independent renderer supplies
+U self-use and Q/D/T preparation with item/convoy selection, S save and E Ready.
+A public snapshot still cannot reconstruct native characters. See
+[PREPARATION.md](PREPARATION.md) for controls, limits and recovery semantics.
+
 ## Phase 5B chapter-boundary checkpoints
 
 `checkpoint.py` defines an engine-free, exact bounded JSON DTO, compatibility

@@ -31,7 +31,7 @@ class Session:
             state = deepcopy(self.packet['state'])
             state['status'] = 'fault'
             for unit in state['units']:
-                for kind in ('moves', 'attacks', 'heals'):
+                for kind in ('moves', 'attacks', 'heals', 'consumables'):
                     unit[kind] = []
             return state
 
@@ -109,10 +109,10 @@ class Session:
                                f"uses {[i['uses'] for i in old['inventory']]} -> {[i['uses'] for i in new['inventory']]}")
         growth = progression_changes(before, after)
         summary = '; '.join(growth) + '; ' if growth else ''
-        if request['action'] == 'heal':
+        if request['action'] in ('heal', 'use'):
             old_target = next(u for u in before['units'] if u['id'] == request['target'])
             new_target = next(u for u in after['units'] if u['id'] == request['target'])
-            summary = (f"HEAL {request['unit']} -> {request['target']}: "
+            summary = (f"{request['action'].upper()} {request['unit']} -> {request['target']}: "
                        f"HP {old_target['hp']} -> {new_target['hp']} "
                        f"(+{new_target['hp']-old_target['hp']}); " + summary)
         summary += f"{team}: {request['action']}"

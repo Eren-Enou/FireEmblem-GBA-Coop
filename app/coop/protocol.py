@@ -1,10 +1,10 @@
-"""Version 5, bounded JSON only. No engine imports or executable serialization."""
+"""Version 6, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
 import math
 import re
 
-VERSION = 5
+VERSION = 6
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -87,7 +87,8 @@ def validate_request(value):
     elif kind == 'command':
         action = value.get('action')
         extra = {'move': ('unit', 'pos'), 'attack': ('unit', 'item', 'target'),
-                 'heal': ('unit', 'item', 'target'), 'wait': ('unit',), 'end_phase': (), 'ready': (), 'save_checkpoint': ()}
+                 'heal': ('unit', 'item', 'target'), 'use': ('unit', 'item', 'target'),
+                 'equip': ('unit', 'item'), 'deposit': ('unit', 'item'), 'withdraw': ('unit', 'item'), 'wait': ('unit',), 'end_phase': (), 'ready': (), 'save_checkpoint': ()}
         require(type(action) is str and action in extra, 'unknown_action')
         fields(value, ('v', 'type', 'session', 'id', 'revision', 'phase', 'digest', 'action') + extra[action])
         for key in ('session', 'id', 'phase', 'digest'):
@@ -101,6 +102,7 @@ def validate_request(value):
             position(value['pos'])
         if 'item' in value:
             integer(value['item'])
+        if 'target' in value:
             string(value['target'])
     else:
         raise ProtocolError('unknown_message')
@@ -119,9 +121,9 @@ def validate_state(value):
     require(value['status'] in ('playing', 'intermission', 'victory', 'defeat', 'fault'))
     campaign = value['campaign']
     if campaign is not None:
-        fields(campaign, ('id', 'chapter', 'title', 'next_title', 'completed', 'ready', 'checkpoint'))
+        fields(campaign, ('id', 'chapter', 'title', 'next_title', 'completed', 'ready', 'checkpoint', 'convoys'))
         fields(campaign['checkpoint'], ('status', 'generation', 'message'))
-        require(campaign['checkpoint']['status'] in ('disabled', 'pending', 'saved', 'error', 'restored'))
+        require(campaign['checkpoint']['status'] in ('disabled', 'pending', 'saved', 'error', 'restored', 'dirty'))
         integer(campaign['checkpoint']['generation'])
         string(campaign['checkpoint']['message'], 256)
         for key in ('id', 'chapter', 'title'):
@@ -147,7 +149,7 @@ def validate_state(value):
     for unit in value['units']:
         fields(unit, ('owner', 'party', 'faction', 'class', 'persistent', 'skills', 'equipped', 'id', 'name', 'team', 'pos', 'hp', 'max_hp', 'dead', 'finished',
                       'moved', 'attacked', 'movement', 'level', 'exp', 'stats', 'wexp', 'mana', 'max_mana',
-                      'inventory', 'moves', 'attacks', 'heals'))
+                      'inventory', 'moves', 'attacks', 'heals', 'consumables'))
         string(unit['id'])
         string(unit['name'])
         require(unit['owner'] is None or unit['owner'] in TEAMS)
@@ -189,7 +191,8 @@ def validate_state(value):
             integer(number, -10000, 10000)
         require(type(unit['inventory']) is list and len(unit['inventory']) <= 20)
         for item in unit['inventory']:
-            fields(item, ('uid', 'nid', 'name', 'uses'))
+            fields(item, ('uid', 'nid', 'name', 'uses', 'effect'))
+            string(item['effect'], 256)
             integer(item['uid'])
             require(item['uid'] not in item_ids)
             item_ids.add(item['uid'])
@@ -201,15 +204,28 @@ def validate_state(value):
         require(type(unit['moves']) is list and len(unit['moves']) <= 4096)
         for pos in unit['moves']:
             position(pos, value['width'], value['height'])
-        for kind in ('attacks', 'heals'):
+        for kind in ('attacks', 'heals', 'consumables'):
             require(type(unit[kind]) is list and len(unit[kind]) <= 2000)
             for choice in unit[kind]:
                 fields(choice, ('item', 'target'))
                 integer(choice['item'])
                 string(choice['target'])
                 require(choice['item'] in {i['uid'] for i in unit['inventory']})
+    if campaign is not None:
+        fields(campaign['convoys'], TEAMS)
+        for convoy in campaign['convoys'].values():
+            require(type(convoy) is list and len(convoy) <= 20)
+            for item in convoy:
+                fields(item, ('uid', 'nid', 'name', 'uses', 'effect'))
+                integer(item['uid'])
+                require(item['uid'] not in item_ids)
+                item_ids.add(item['uid'])
+                for key in ('nid', 'name', 'effect'):
+                    string(item[key], 256)
+                if item['uses'] is not None:
+                    integer(item['uses'], 0, 10000)
     for unit in value['units']:
-        require(all(choice['target'] in ids for kind in ('attacks', 'heals') for choice in unit[kind]))
+        require(all(choice['target'] in ids for kind in ('attacks', 'heals', 'consumables') for choice in unit[kind]))
     return value
 
 

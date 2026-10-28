@@ -6,7 +6,9 @@ staff slice and original [Mutual Aid encounter](HEALING.md). Phase 5A implements
 [live two-chapter continuity](CAMPAIGN.md) with native persistent units and two
 parties. Phase 5B implements [checkpoint A](CHECKPOINTS.md) for the trusted
 Chapter 1 intermission, including atomic generations and fresh-process startup
-recovery. Broader state support, mid-map checkpoints and migrations remain design
+recovery. Phase 5C adds [personal items and own-party preparation](PREPARATION.md), with
+dirty checkpoint acknowledgement and two more audited native item prefabs.
+Broader state support, mid-map checkpoints and migrations remain design
 work; the tables below describe broader gates, not the current save schema.
 This document follows the tested [Internet transport path](INTERNET_PLAY.md).
 It preserves the full goal: two allied commanders completing multiple chapters

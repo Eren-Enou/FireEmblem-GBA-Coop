@@ -20,8 +20,9 @@ protocol-v3 Heal/Mend staff commands, allied healing hints/UI and the separate
 Mutual Aid scenario. Phase 5A adds native persistent unique characters, distinct
 Blue/Green parties and a live two-chapter campaign with dual-ready intermission.
 Phase 5B adds validated native chapter-boundary checkpoints, atomic generations
-and fresh-process recovery. Protocol v5 carries checkpoint status/save requests
-alongside campaign metadata. Mid-map saves and full tactical parity remain open.
+and fresh-process recovery. Phase 5C adds native Vulnerary use and own-party intermission equip/convoy
+preparation, dirty/save acknowledgement and supported equipment recovery.
+Protocol v6 carries consumables, item explanations, convoys and checkpoint status. Mid-map saves and full tactical parity remain open.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
@@ -70,7 +71,7 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   training: 95 starting XP and 40 human HP are declared fixture initial conditions,
   not rewards or normal campaign defaults. Keep `healing_demo.py` separate too;
   its injured frontliners, Cleric healers and two chokepoints are original fixture
-  conditions. Protocol v5 requires matching clients.
+  conditions. Protocol v6 requires matching clients.
 - Healing is a narrow Heal/Mend spell slice: delegate availability/rank/range/
   target restrictions and all effects to LT. Never equip non-equippable staves,
   transfer target ownership, accept client healing amounts, or turn `heal` into
@@ -87,6 +88,16 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   Native cleanup hooks/HP recovery apply once. Publish after settlement; lifecycle
   failure freezes the session. Use ID-based diffs when the chapter roster changes.
   Read [campaign instructions](docs/CAMPAIGN.md) before extending this lifecycle.
+- Keep `preparation.py` narrow: native Vulnerary self-use and the five audited
+  items only. Use native item availability/targets/combat/actions, never client
+  effect amounts. Own-party convoy actions must pass an explicit party ID;
+  `StoreItem` uses the active Blue party and is unsuitable for Green. Validate
+  permanent owner/team/party, unique instance references, native capacity/rank
+  before mutations. Unexpected hook failures freeze the session.
+- Preparation requires storage at Chapter 1 intermission. Any equipment/transfer
+  mutation clears both votes, publishes dirty status and blocks Ready until a
+  confirmed save. Do not auto-save dirty changes or silently overwrite an
+  incompatible old campaign. See [preparation](docs/PREPARATION.md).
 - Keep `checkpoint.py` as a separate bounded, versioned native-state DTO/storage
   contract; never serialize display JSON or accept pickle/component code. Capture
   only settled Chapter 1 intermission before native cleanup; unsupported state

@@ -1,4 +1,4 @@
-# Phase 5B: chapter-boundary campaign recovery
+# Chapter-boundary campaign recovery (Phases 5B and 5C)
 
 The host automatically checkpoints **Chapter 1's settled intermission** before
 end-chapter cleanup. Both friends can close all processes and return later.
@@ -7,8 +7,24 @@ commanders Ready to load Chapter 2. Native cleanup/recovery hooks run once on
 that continuation, not while capturing the checkpoint.
 
 This format supports the original Two Banners campaign's nonterminal boundary,
-not mid-map Chapter 1/2 saves or a final-victory archive. It does not add trading,
+not mid-map Chapter 1/2 saves or a final-victory archive. It supports own-party preparation; it does not add cross-army trading,
 recruitment, promotion, deployment menus, migrations or live-session loading.
+
+## Phase 5C compatibility and preparation
+
+Read [PREPARATION.md](PREPARATION.md) for controls and the exact five-item scope.
+Each preparation mutation marks the boundary **dirty / UNSAVED**, clears both
+Ready votes, and blocks continuation until S confirms saving. The previous
+checkpoint remains valid if the host closes with dirty changes; they are lost
+on that restart. Save errors stay visible and also block Ready.
+
+The `/1` DTO structure is retained with an expanded trusted item list. Native
+rules changed, including the campaign's starting resources and preparation
+adapter. The conservative manifest therefore **rejects Phase 5B checkpoints**.
+Keep old saves untouched with their matching engine checkout, or start a new
+Phase 5C campaign using `--checkpoint-dir artifacts/campaign-5c`. There is no
+migration/bypass; incompatible existing generations are never overwritten.
+The compatibility manifest includes `preparation.py` as native rules.
 
 ## Save, close and return
 
@@ -49,7 +65,7 @@ TLS works with the same certificate/name/bind options as
 [INTERNET_PLAY.md](INTERNET_PLAY.md). Supply those options again on the restored
 host; TLS keys and army tokens are never in a checkpoint. Redistribute the new
 private invitations to the commanders. Old tokens and old-session commands
-reject. All peers must update to **protocol v5**. Actual separate-PC/WAN recovery
+reject. All peers must update to **protocol v6**. Actual separate-PC/WAN recovery
 and two-human play remain unverified.
 
 The restored intermission retains character health and permanent state. Its
@@ -70,7 +86,7 @@ processor is a restoration source.
 | --- | --- |
 | Boundary | Campaign/version, compatibility manifest, completed chapter and trusted next chapter |
 | Characters | Exactly four stable original IDs; explicit owner, tactical team, party/faction, trusted class, level/EXP, base stats, growth rates/points, cap modifiers, weapon XP, HP/mana/fatigue/guard, death, personal fields and equipment references |
-| Items | Unique instance UIDs, trusted Iron Axe/Heal/Mend IDs, owner or convoy reference, droppable flag, remaining/starting uses; no duplicate or orphan ownership |
+| Items | Unique instance UIDs, trusted Iron Axe/Hand Axe/Heal/Mend/Vulnerary IDs, owner or convoy reference, droppable flag, remaining/starting uses; no duplicate or orphan ownership |
 | Skills | Unique UIDs, trusted supported passive IDs, owner, source/type and exact supported data schema |
 | Parties | Distinct Blue/Green IDs, leaders, money, bonus EXP, convoy instances and roster order |
 | Campaign | Supported mode/permadeath, chapter completion event IDs and bounded native combat/progression/history records |

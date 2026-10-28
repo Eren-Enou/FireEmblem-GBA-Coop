@@ -29,11 +29,15 @@ def choose(state, team):
     return ('wait', {'unit': ready[0]['id']}) if ready else ('end_phase', {})
 
 
-def plan():
+def plan(preparation=False):
     from app.coop.simulation import Simulation
     from app.coop.server import Session
     from app.coop.protocol import VERSION
-    sim = Simulation(scenario='campaign')
+    import tempfile
+    folder = tempfile.TemporaryDirectory(prefix='lt-plan-')
+    sim = Simulation(scenario='campaign', checkpoint_dir=folder.name if preparation else None)
+    prep = []
+    prepared = False
     scripts = {'player': [], 'other': []}
     try:
         session = Session(sim)
@@ -45,7 +49,30 @@ def plan():
             team = state['phase']
             if state['status'] == 'intermission':
                 team = 'other' if 'player' in state['campaign']['ready'] else 'player'
-            kind, args = choose(state, team)
+            if preparation and state['status'] == 'intermission' and not prepared:
+                # Decisions retain only a ranged axe and stronger staff for Chapter 2.
+                units = {u['id']: u for u in state['units']}
+                for owner, prefix in (('player', 'Blue'), ('other', 'Green')):
+                    captain, healer = prefix + '_Captain', prefix + '_Healer'
+                    convoy = state['campaign']['convoys'][owner]
+                    hand = next(i['uid'] for i in convoy if i['nid'] == 'Hand_Axe')
+                    mend = next(i['uid'] for i in convoy if i['nid'] == 'Mend')
+                    prep.extend([(owner, 'withdraw', {'unit': captain, 'item': hand}),
+                                 (owner, 'equip', {'unit': captain, 'item': hand}),
+                                 (owner, 'deposit', {'unit': captain, 'item': units[captain]['inventory'][0]['uid']}),
+                                 (owner, 'deposit', {'unit': healer, 'item': units[healer]['inventory'][0]['uid']}),
+                                 (owner, 'withdraw', {'unit': healer, 'item': mend})])
+                # Two confirmed generations keep the prepared boundary in fallback too.
+                prep += [('player', 'save_checkpoint', {}), ('other', 'save_checkpoint', {})]
+                prepared = True
+            if prep:
+                team, kind, args = prep.pop(0)
+            else:
+                kind, args = choose(state, team)
+                if preparation and state['status'] == 'playing' and state['campaign']['chapter'] == 'alliance' and state['turn'] == 1:
+                    personal = next((u for u in state['units'] if u['owner'] == team and u['consumables']), None)
+                    if personal:
+                        kind, args = 'use', {'unit': personal['id'], **personal['consumables'][0]}
             # Revision barriers serialize readiness and prevent a stale base when
             # both commanders reach the intermission at almost the same instant.
             scripts[team].append({'action': 'wait_revision', 'revision': packet['revision']})
@@ -60,3 +87,41 @@ def plan():
         return scripts, session.packet['revision']
     finally:
         sim.close()
+        folder.cleanup()
+
+
+def verify_preparation(packets):
+    """Inspect actual process observations, including capped healing and resources."""
+    uses, stronger_heals = set(), 0
+    for index, packet in enumerate(packets):
+        state = packet['state']
+        refs = [i['uid'] for u in state['units'] for i in u['inventory']]
+        refs += [i['uid'] for convoy in state['campaign']['convoys'].values() for i in convoy]
+        assert len(refs) == len(set(refs)), 'Duplicate public item reference'
+        if not index or not packet['result']:
+            continue
+        result = packet['result']
+        old = {u['id']: u for u in packets[index-1]['state']['units']}
+        new = {u['id']: u for u in state['units']}
+        if result['action'] == 'use':
+            nid = ('Blue' if result['team'] == 'player' else 'Green') + '_Captain'
+            before, after = old[nid], new[nid]
+            assert after['hp'] - before['hp'] == min(10, before['max_hp']-before['hp'])
+            item = next(i for i in before['inventory'] if i['nid'] == 'Vulnerary')
+            assert next(i for i in after['inventory'] if i['uid'] == item['uid'])['uses'] == item['uses']-1
+            assert after['finished'] and after['attacked']
+            uses.add(result['team'])
+        if result['action'] == 'heal' and state['campaign']['chapter'] == 'holding':
+            healer = old[('Blue' if result['team'] == 'player' else 'Green') + '_Healer']
+            assert [i['nid'] for i in healer['inventory']] == ['Mend']
+            if any(new[nid]['hp']-unit['hp'] > healer['stats']['MAG']+10 for nid, unit in old.items() if nid in new):
+                stronger_heals += 1
+    holding = next(p['state'] for p in packets if p['state']['campaign']['chapter'] == 'holding')
+    for prefix, owner in (('Blue', 'player'), ('Green', 'other')):
+        captain = next(u for u in holding['units'] if u['id'] == prefix+'_Captain')
+        assert {i['nid'] for i in captain['inventory']} == {'Hand_Axe', 'Vulnerary'}
+        assert next(i for i in captain['inventory'] if i['uid'] == captain['equipped'])['nid'] == 'Hand_Axe'
+        assert next(i for i in captain['inventory'] if i['nid'] == 'Vulnerary')['uses'] == 2
+        assert {i['nid'] for i in holding['campaign']['convoys'][owner]} == {'Iron_Axe', 'Heal'}
+    assert uses == {'player', 'other'} and stronger_heals > 0
+    return {'personal_use_owners': sorted(uses), 'mend_heals_exceeding_heal': stronger_heals}

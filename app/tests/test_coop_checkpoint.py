@@ -283,8 +283,8 @@ assert u.get_field('oath') == 'River Wardens' and u.get_mana() == 7
 fallen = s.game.get_unit('Green_Healer')
 assert fallen.dead and fallen.position is None and fallen.items[0].uid == 103
 p = s.game.parties['Blue_Banner']
-assert p.money == 73 and p.bexp == 11 and p.convoy[0].data['uses'] == 9
-assert len(s.game.unit_registry) == 4 and len(s.game.item_registry) == 5
+assert p.money == 73 and p.bexp == 11 and p.convoy[-1].data['uses'] == 9
+assert len(s.game.unit_registry) == 4 and len(s.game.item_registry) == 11
 print('NATIVE_EXTRA_STATE_OK')
 s.close()
 '''

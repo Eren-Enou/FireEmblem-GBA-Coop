@@ -1,6 +1,78 @@
 # Progress - October 27, 2026
 
-## Current milestone: Phase 5B reliable chapter-boundary campaign recovery
+## Current milestone: Phase 5C personal resources and army preparation
+
+### Implementation
+
+- Native Vulnerary self-use for both armies: owned available item and self target,
+  active phase, selectable/living/unfinished actor and native target restrictions.
+  LT combat handles healing/caps, charges, last-charge removal and action use.
+  No effect values or arbitrary item execution enter through network commands.
+- Each captain starts with a three-use Vulnerary. Each distinct native party has
+  one Hand Axe and one Mend in its convoy. Equip/deposit/withdraw use native actions
+  with explicit permanent party identity, class/rank/capacity and unique-instance
+  validation. No cross-army transfer, copying, shopping, loot or additional chapters.
+- Protocol v6 supplies self-use hints, item effects and separate party convoys.
+  U uses; Q equips; D deposits; T takes; item rows/numbers and convoy click/arrows
+  select. The UI names equipment, effects and restrictions. Full controls and
+  design choices: [PREPARATION.md](PREPARATION.md).
+- Every preparation mutation clears both Ready votes and publishes UNSAVED/dirty.
+  Explicit S commits a new generation; Ready is blocked on dirty/error until a
+  successful acknowledgement. Entry autosave remains. Native item/weapon/convoy
+  capture and exact fresh-process recapture preserve preparation and used charges.
+- Checkpoint DTO `/1` gains Hand Axe and Vulnerary allowlist/equipped-axe support.
+  Compatibility also hashes preparation rules. Changed campaign rules deliberately
+  reject Phase 5B manifests without overwriting them. Keep old saves with their
+  matching checkout; use a new Phase 5C folder. See [CHECKPOINTS.md](CHECKPOINTS.md).
+- Dedicated co-op modules only; upstream engine, licenses, attribution and sample
+  project/assets remain unchanged. No new dependencies or binary assets.
+
+### Verification and remaining gates
+
+- Final combined run: **201 passed in 445.337 seconds**: all 190 selected prior
+  checkpoint/campaign/healing/progression/playability/TLS/engine regressions plus
+  nine preparation/native/process checks and two SDL input checks. The prepared
+  uninterrupted campaign completed **revision 58 victory / 59 identical client
+  snapshots**. Complete shutdown/fresh restore finished **revision 29 victory /
+  30 + 30 identical snapshots**. Baseline four checkpoint-recovery process modes
+  and Random/Dynamic native growth recovery remain covered.
+- The initial combined run had 198/199 passing; its prepared restart reporting
+  test exposed a missing final-save revision barrier in the harness. Both clients
+  now wait for the same committed boundary before writing reports. The final
+  combined result above includes that fix and the hidden-button UI regression.
+- A final text-only fit correction shortened the unavailable-item label. Both
+  SDL input cases then passed again in **5.841 seconds**, and a render from the
+  validated TLS final-state packet confirmed the complete label fits the panel.
+- Publication audit: **26 UTF-8 Python/Markdown files**, **15 Python AST parses**,
+  **114 valid local documentation links**; staged whitespace, credential patterns
+  and forbidden-path checks passed. No envs, credentials, saves, screenshots,
+  proprietary assets, generated engine files or unrelated changes are included.
+
+- Separate prepared TLS/corrupt-generation smoke passed in
+  `artifacts/checkpoint-smoke/run-bf0f6134/`: hosts 169508/128584 and four new
+  graphical clients compared **30 + 30 snapshots**, recovered prepared generation
+  2 with exact native recapture and completed new-session **revision 29 victory**.
+  Old tokens and old-session requests rejected. Current/previous file semantics
+  and baseline recovery modes are also covered by the regression command.
+- Actual choices: Blue's personal use healed **16 -> 26**, Green's capped use
+  healed **27 -> 36**, both spending one charge/action. Mend restored **16 HP**
+  where the fixture's Heal could restore 11. A controlled real Chapter 2 attack
+  proves Hand Axe works at distance two where Iron Axe has no legal target;
+  native misses/lower accuracy and limited durability remain applicable.
+- Two separate SDL input checks passed in **5.701 seconds**; they use native
+  Session commands through the real client model/local harness. Visual inspection
+  of the generated preparation screen confirmed readable effects/eligibility,
+  selected weapon/convoy, dirty status and controls. No screenshot is committed.
+
+No two-human, physical control usability, separate-PC or Internet acceptance is
+claimed. Full repository suite has not been run. Broader tactical parity, native
+component save coverage and mid-map checkpoints remain future work. The next
+practical gate is two-human equipment/control exploration and a private two-PC
+TLS campaign/recovery pilot. No known functional blocker is recorded for this
+bounded slice after these executed checks.
+
+## Historical milestone: Phase 5B reliable chapter-boundary campaign recovery
+
 
 ### Implemented and verified
 

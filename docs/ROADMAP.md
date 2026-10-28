@@ -99,8 +99,7 @@ durable saves, verified WAN play and full tactical/campaign parity remain open.
 - [x] Full legal supported victory; socket convergence/rejoin and three-process demo.
 - [ ] Two-human usability and private two-PC playtest remain unverified.
 
-Recommended next gameplay slice: personal Vulnerary use and item/action previews,
-with narrow native-engine commands and equivalent recovery/authority tests.
+Personal Vulnerary use and narrow equipment preparation are implemented in Phase 5C.
 
 ## Phase 5A: persistent armies and first campaign
 
@@ -129,6 +128,17 @@ Next: run that pilot and extend supported state only with native component/schem
 tests. Mid-map checkpoints require a separate contract; no deployment/trade/
 recruitment features or migration framework were introduced by Phase 5B.
 
+## Phase 5C: meaningful army preparation and item decisions
+
+- [x] Native Vulnerary self-use, HP cap/charge/removal/action tradeoff and hints.
+- [x] Separate party Hand Axe/Mend options, own-unit equip and convoy transfer.
+- [x] Native capacity/class/rank and permanent-owner/instance uniqueness authority.
+- [x] Dirty preparation clears votes and requires reliable save before Ready.
+- [x] Supported item/equipment/convoy persistence with strict compatibility checks.
+- [x] Original prepared two-chapter campaign, uninterrupted and fresh-process restore.
+- [x] Reproducible graphical-client convergence and native/authority regressions.
+- [ ] Two-human usability and private two-PC TLS playtest.
+
 ## Remaining tactical/campaign parity (not implemented)
 
 Implementation methods are now documented in
@@ -141,9 +151,9 @@ audit. These design tasks are complete; the mechanics/checkpoint gates below are
 - Broader campaign saves and mid-map phase/event/terrain schema; original chapter-boundary saves now work.
 - Extend supported checkpoint components and then mid-map quiescent checkpoints;
   migrations need an actual future schema, not speculative conversion.
-- Explicit host-owned army identities/two persistent parties, followed by
-  network Equip/Use/Heal/Trade/Recruit/Promote/deployment slices. Core combat
-  XP/growth parity is implemented by Phase 4A.
+- Expand beyond the implemented owner/party identities and narrow Equip/Use/Heal
+  slices toward future Trade/Recruit/Promote/deployment only with their own gates.
+  Core combat XP/growth parity is implemented by Phase 4A.
 
 ## Broader campaign integration (not implemented)
 

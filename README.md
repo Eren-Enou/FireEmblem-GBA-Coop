@@ -19,7 +19,11 @@ healers and cross-army support. The [two-chapter campaign](docs/CAMPAIGN.md) now
 characters, progression and used equipment into the next battle through a shared
 ready screen. [Chapter-boundary checkpoints](docs/CHECKPOINTS.md) let both friends
 close all processes after Chapter 1 and resume later with fresh invitations.
-Protocol v5 requires matching host and clients.
+Phase 5C adds [personal Vulneraries and intermission equipment preparation](docs/PREPARATION.md).
+Use a fresh `--checkpoint-dir artifacts/campaign-5c` for its changed native rules;
+older Phase 5B saves remain valid only with their matching checkout. Both
+commanders must save preparation before Ready can start Chapter 2.
+Protocol v6 requires matching host and clients.
 [Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:

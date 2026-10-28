@@ -19,7 +19,7 @@ MAX_BYTES = 1048576
 MAX_UID = 1000000000  # Leave room for native chapter-local allocations.
 STATS = ('HP', 'STR', 'MAG', 'SKL', 'SPD', 'LCK', 'DEF', 'RES', 'CON', 'MOV')
 WEAPONS = ('Sword', 'Lance', 'Axe', 'Bow', 'Staff', 'Light', 'Anima', 'Dark', 'Default')
-ITEMS = {'Iron_Axe': 45, 'Heal': 30, 'Mend': 20}
+ITEMS = {'Iron_Axe': 45, 'Heal': 30, 'Mend': 20, 'Hand_Axe': 20, 'Vulnerary': 3}
 SKILLS = ('Strength_Plus2', 'Strength_Plus5', 'Resistance_Plus5', 'Defense_Plus5',
           'Speed_Plus5', 'Skill_Plus5', 'Luck_Plus5', 'Canto')
 RECORDS = {
@@ -90,7 +90,7 @@ def compatibility():
     root = Path(__file__).resolve().parents[2]
     paths = sorted(set((root / 'app/engine').rglob('*.py')) |
                    {root / 'app/coop' / name for name in
-                    ('campaign.py', 'simulation.py', 'checkpoint.py', 'checkpoint_native.py')} |
+                    ('campaign.py', 'simulation.py', 'checkpoint.py', 'checkpoint_native.py', 'preparation.py')} |
                    set((root / 'default.ltproj/game_data').rglob('*.json')))
     hasher = hashlib.sha256(FORMAT.encode())
     for path in paths:
@@ -205,7 +205,7 @@ def validate(payload, manifest=None):
     for unit in payload['units']:
         if unit['equipped'] is not None:
             item = by_uid[unit['equipped']]
-            check(item['nid'] == 'Iron_Axe' and unit['class'] == 'Banner_Vanguard' and
+            check(item['nid'] in ('Iron_Axe', 'Hand_Axe') and unit['class'] == 'Banner_Vanguard' and
                   Decimal(unit['wexp']['Axe']) >= 1 and item['data']['uses'] > 0,
                   'invalid native equipment eligibility')
         check(unit['dead'] or unit['hp'] > 0, 'living character has zero HP')

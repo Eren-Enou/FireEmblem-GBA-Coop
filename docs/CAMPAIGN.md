@@ -3,16 +3,23 @@
 Phase 5A links two original chapters in one authoritative LT host session. Blue
 and Green have permanent characters and separate native parties. This is live
 continuity during battles, with Phase 5B [chapter-boundary checkpoints](CHECKPOINTS.md)
-for complete host shutdown/restart after Chapter 1. Mid-map saving, trading,
+for complete host shutdown/restart after Chapter 1. Mid-map saving, cross-army trading,
 recruitment, promotion, shops and deployment menus remain unsupported. All peers
-must run the same protocol-v5 version.
+must run the same protocol-v6 version.
+
+Phase 5C adds [personal items and intermission preparation](PREPARATION.md).
+Captains carry Vulneraries; separate party convoys offer Hand Axe and Mend.
+Equipment changes clear readiness and require a confirmed save. Use a **new
+checkpoint folder** for these changed rules; Phase 5B manifests reject explicitly.
+The revision-38 statistics below describe the baseline tactic without preparation;
+the prepared acceptance uses a different reproducible sequence.
 
 ## Play locally
 
 From the actual `FE-GBA-Coop` repository root, run these in three terminals:
 
 ```powershell
-.venv\Scripts\python.exe run_network.py host --scenario campaign --seed 0
+.venv\Scripts\python.exe run_network.py host --scenario campaign --seed 0 --checkpoint-dir artifacts/campaign-5c
 .venv\Scripts\python.exe run_network.py client --session-file artifacts/network/blue.json
 .venv\Scripts\python.exe run_network.py client --session-file artifacts/network/green.json
 ```
