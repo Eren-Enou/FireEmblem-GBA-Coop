@@ -1,6 +1,86 @@
 # Progress - October 27, 2026
 
-## Current milestone: Phase 5C personal resources and army preparation
+## Current milestone: Phase 5D tactical reading and decisions
+
+### Implemented
+
+- `tactics.py` attaches bounded authoritative read-only fields in
+  `Session.state_projection`. Native movement/path/target functions provide unit
+  costs/routes and per-enemy/per-weapon current and after-movement reach. Occupied
+  stops are removed while native allied traversal, blockers, guard-AI movement,
+  availability/range and configured line of sight remain authoritative.
+- Native `combat_calcs` provide selected-item damage, displayed HIT, CRIT,
+  attack/multiattack counts, durability limits, triangle and counter eligibility.
+  Unsupported complex item/skill/paired effects show unavailable data. Forecasts
+  never equip/relocate, create skills, execute combat/actions/events or consume RNG.
+- Protocol v7 carries terrain bonuses/costs, routes, threats and legal-attack
+  forecasts in the same revision/digest as the board. There are no preview
+  requests. Both clients get identical data; native authority/TLS/replay checks
+  remain. Fog/fog regions reject before any shared board is served.
+- The 1240x960 client has individual/combined F threat overlays, current-versus-
+  moved reach, native terrain/cost/remaining-movement and danger information,
+  selected-unit action/equipment details, side-by-side weapon inspection and
+  a forecast panel. Move/attack clicks propose locally; Enter confirms, Esc/right
+  click cancels. Right click also inspects an enemy. State refresh, resync and
+  disconnect invalidate proposals bound to session/revision/digest. Pending or
+  stale views pause previews; acknowledgements show COMMITTED and the revision.
+- Threats describe **current blockers**, not a hypothetical future formation.
+  HIT is a native displayed rating, not exact True Hit probability; strike counts
+  are maxima and counters require survival. No exact AI intent/guaranteed outcome,
+  complex proc forecasts, hypothetical post-move combat or fog support is claimed.
+- `Simulation`, native campaign/preparation/checkpoint code, schema, engine and
+  attribution/assets are unchanged. Phase 5C checkpoints remain compatible;
+  transport/presentation code does not change their native rules manifest.
+  Controls, launch instructions, source calculations, decision demonstration and
+  unperformed human checklist: [TACTICS.md](TACTICS.md).
+
+### Actual verification and publication
+
+- Combined regression run: **218 passed in 543.395 seconds**: all 201 selected
+  prior preparation/checkpoint/campaign/healing/progression/network/TLS/engine
+  checks plus 17 tactical cases. Baseline and prepared campaigns still complete;
+  checkpoint normal/corrupt/truncated/interrupted and growth recovery remain covered.
+- After final presentation/client refinements (explicit COMMITTED notice, paused
+  stale previews, right-click inspection, distinct enemy coordinates and percentage
+  crit labels), **25 focused tactical/model/input checks passed in 50.474 seconds**.
+  An earlier focused pass of those cases was 49.850 seconds. Final unsupported
+  RNG-mode guard, normal native forecasts and query purity then passed **3 focused
+  tests in 3.900 seconds**. Grandmaster/other unaudited combat modes now explicitly
+  refuse forecasts. No native gameplay code changed after the combined run.
+- TLS graphical tactical acceptance at `artifacts/network-smoke/run-61d62be7/`:
+  host 126476, clients 33832/138868; **42 identical snapshots**, **revision 41 shared
+  victory**, digest `ce72df1b7a3b560b27eb46b939acef9be8846248d58441a460837a130b894608`.
+  The same committed revision-35 target shows Iron **11 damage / HIT 85 / CRIT 6%**
+  versus Hand **10 / 70 / 6%**, with native counters. A separate real range-two
+  hit proves Hand prevents an Iron counter. Threat/forecast pages were inspected
+  for overlaps; current render-only copies from the validated TLS packets are in
+  `artifacts/phase5d-ui-review/`. Query-only renderers transmit no commands.
+- Controlled seed-0 cooperation/positioning test: Mira remains **18 HP, alive**
+  when held behind guards and healing across banners; the exposed crossing choice
+  leaves her **0 HP, dead** under the same native Red AI. This is a deliberate
+  separate fixture comparison, not a fabricated human playtest or AI prediction.
+- TLS prepared checkpoint recovery at `artifacts/checkpoint-smoke/run-036e397e/`:
+  hosts 123356/161132, clients 160604/144208 then 96968/155900; **30 + 30 identical
+  snapshots**, new-session **revision 29 victory**. Corrupt current falls back to
+  prepared generation 2 with exact native recapture. A separate fresh process
+  restored an actual Phase 5C generation from `run-bf0f6134`, printing
+  `NATIVE_CHECKPOINT_VERIFIED` and `PHASE5C_NATIVE_RESTORE_WITH_V7_OK`.
+- Publication audit: **24 UTF-8 Python/Markdown files**, **13 Python AST parses**,
+  **118 valid local links**; no assets, credentials, envs, saves, screenshots,
+  generated engine/native-rule files or unrelated changes are included.
+
+### Blockers and next steps
+
+No known functional blocker remains in this bounded slice after the recorded
+checks. Full repository suite, two-human usability and separate-PC/WAN play have
+not been performed. Run the documented human confirmation/formation/forecast
+checklist and private two-PC TLS recovery pilot next, then expand one audited
+native skill/item interaction with corresponding purity/forecast/persistence
+checks. Broad fog visibility, arbitrary skill forecasts, network canto commands,
+new campaigns, promotions, recruitment and mid-map saves remain outside scope.
+
+## Historical milestone: Phase 5C personal resources and army preparation
+
 
 ### Implementation
 

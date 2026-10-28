@@ -27,6 +27,8 @@ class Model:
         self.observed = []
         self.progression = []
         self.level_ups = []
+        self.decision = None
+        self.decision_notice = 'No proposed command'
 
     def apply(self, packet):
         require(type(packet) is dict and type(packet.get('v')) is int and packet['v'] == VERSION)
@@ -50,7 +52,12 @@ class Model:
                 changes = progression_changes(self.packet['state'], packet['state'])
                 self.progression = (self.progression + changes)[-8:]
                 self.level_ups = (self.level_ups + [change for change in changes if 'LEVEL UP' in change])[-4:]
+            if self.decision:
+                self.cancel_decision('Battlefield refreshed; proposal cleared')
+            acknowledged = bool(self.pending and packet['result'] and packet['result']['id'] == self.pending)
             self.packet = packet
+            if acknowledged:
+                self.decision_notice = f"COMMITTED r{packet['revision']}: {packet['result']['action']}"
             if advancing or self.syncing or (packet['result'] and packet['result']['id'] == self.pending):
                 self.pending = None
             self.syncing = False
@@ -65,7 +72,10 @@ class Model:
             require(type(packet['teams']) is list and len(packet['teams']) <= 2)
             require(all(t in TEAMS for t in packet['teams']) and len(set(packet['teams'])) == len(packet['teams']))
             self.peers = packet['teams']
+            if set(self.peers) != set(TEAMS):
+                self.cancel_decision('Peer disconnected; proposal cleared')
         elif kind == 'reject':
+            self.cancel_decision('Command rejected; inspect the current battlefield')
             fields(packet, ('v', 'type', 'id', 'code', 'revision'))
             integer(packet['revision'])
             string(packet['code'])
@@ -108,6 +118,38 @@ class Model:
                     not self.syncing and self.packet['state']['status'] == 'intermission' and
                     self.packet['state']['campaign']['checkpoint']['status'] != 'disabled')
 
+    @property
+    def preview_readable(self):
+        return bool(self.packet and set(self.peers) == set(TEAMS) and not self.pending and
+                    not self.syncing and self.packet['state']['status'] == 'playing' and
+                    self.packet['state']['tactics']['status'] == 'available')
+
+    def cancel_decision(self, message='Proposal cancelled; nothing sent'):
+        self.decision = None
+        self.decision_notice = message
+
+    def propose(self, action, **args):
+        require(self.can_act and action in ('move', 'attack'), 'client_not_ready')
+        state = self.packet['state']
+        unit = next((u for u in state['units'] if u['id'] == args.get('unit')), None)
+        require(unit and unit['team'] == self.team and not unit['finished'], 'not_owner')
+        if action == 'move':
+            require(set(args) == {'unit', 'pos'} and args['pos'] in unit['moves'], 'illegal_move')
+            info = next(i for i in state['tactics']['units'] if i['unit'] == unit['id'])
+            require(any(r['pos'] == args['pos'] for r in info['routes']), 'preview_unavailable')
+        else:
+            require(set(args) == {'unit', 'item', 'target'} and
+                    {'item': args['item'], 'target': args['target']} in unit['attacks'], 'illegal_attack')
+        self.decision = {'action': action, 'args': args, 'session': self.packet['session'],
+                         'revision': self.packet['revision'], 'digest': self.packet['digest']}
+        self.decision_notice = 'PROPOSED only; Enter confirms / Esc cancels'
+
+    def confirm_decision(self):
+        proposal = self.decision
+        require(proposal and self.can_act and all(proposal[key] == self.packet[key]
+                for key in ('session', 'revision', 'digest')), 'stale_preview')
+        return self.command(proposal['action'], **proposal['args'])
+
     def command(self, action, **kwargs):
         require(self.can_prepare if action in ('equip', 'deposit', 'withdraw') else self.can_save if action == 'save_checkpoint' else self.can_ready if action == 'ready' else self.can_act, 'client_not_ready')
         packet = self.packet
@@ -116,6 +158,7 @@ class Model:
                    'phase': packet['state']['phase'], 'digest': packet['digest'],
                    'action': action, **kwargs}
         validate_request(request)
+        self.cancel_decision('Command SENT; waiting for authoritative result')
         self.pending = request['id']
         return request
 
@@ -199,6 +242,7 @@ class Connection:
                 self.model.apply(packet)
             except ProtocolError as exc:
                 if str(exc) == 'digest_mismatch':
+                    self.model.cancel_decision('State check failed; proposal cleared')
                     self.model.syncing = True
                     self.model.message = 'State check failed; requesting authoritative resync'
                     self.send({'v': VERSION, 'type': 'sync'})
@@ -211,6 +255,7 @@ class Connection:
     def close(self):
         self.closed = True
         self.model.peers = []
+        self.model.cancel_decision('Disconnected; proposal cleared')
         try:
             self.socket.shutdown(socket.SHUT_RDWR)
         except OSError:

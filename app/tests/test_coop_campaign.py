@@ -32,7 +32,7 @@ class CampaignAuthorityTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolError, '^' + code + '$'):
             self.issue(**args)
         self.assertEqual(self.session.packet, before)
-        self.assertEqual(digest(self.sim.snapshot()), before['digest'])
+        self.assertEqual(digest(self.session.state_projection()), before['digest'])
 
     def chapter(self):
         for _ in range(120):

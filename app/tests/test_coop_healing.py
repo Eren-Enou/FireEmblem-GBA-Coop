@@ -33,7 +33,7 @@ class HealingAuthorityTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolError, '^' + code + '$'):
             self.issue(team, action, **args)
         self.assertEqual(self.session.packet, before)
-        self.assertEqual(digest(self.sim.snapshot()), before['digest'])
+        self.assertEqual(digest(self.session.state_projection()), before['digest'])
 
     def test_both_cross_army_heals_xp_level_durability_and_action(self):
         for team, healer_id, target_id in (('player', 'Blue_Healer', 'Green_Captain'),

@@ -1,5 +1,30 @@
 # Architecture and original engine assessment
 
+## Phase 5D tactical presentation
+
+`Session.state_projection` attaches `tactics.project` to the native
+`Simulation.snapshot`, before validation/digest/publication. It computes only
+read-only native path/target/terrain/combat information at the committed boundary.
+There is no preview network request, hypothetical unit relocation/equip or combat
+solver execution. Host mutation still uses the original Simulation/native actions.
+The new projection and transport/client changes leave native checkpoint rules and
+format untouched, preserving Phase 5C saves. The checkpoint compatibility manifest
+intentionally excludes this read-only presentation module. No engine edits.
+
+Protocol v7 bounds terrain/cost grids, routes, per-enemy/per-weapon current/moved
+reach and per-legal-attack forecasts. Available simple weapon/passive components
+are audited; unsupported forecasts are explicit. Damage/hit/crit/count/counter/
+triangle use LT calculators; path and reach use LT services and native LoS rules.
+Fog and fog regions fail closed before board publication. The native board still
+needs a complete per-army visibility contract before fog can be supported.
+
+Model proposals are local, bound to session/revision/digest and cleared by refresh,
+resync or disconnect. Explicit confirmation creates the normal command exactly
+once. Renderer-only overlays never advance revisions. Current-position HIT is a
+displayed rating; strike counts are maxima and counterattacks require survival.
+Threats use current blockers and do not model a future formation after movement.
+Controls, decision demonstration and manual pilot: [TACTICS.md](TACTICS.md).
+
 ## Phase 5C native inventory decisions
 
 `preparation.py` gates trusted Vulnerary self-use through native availability,

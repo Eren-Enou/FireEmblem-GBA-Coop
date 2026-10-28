@@ -29,7 +29,7 @@ def choose(state, team):
     return ('wait', {'unit': ready[0]['id']}) if ready else ('end_phase', {})
 
 
-def plan(preparation=False):
+def plan(preparation=False, tactical=False, captures=None):
     from app.coop.simulation import Simulation
     from app.coop.server import Session
     from app.coop.protocol import VERSION
@@ -38,7 +38,15 @@ def plan(preparation=False):
     sim = Simulation(scenario='campaign', checkpoint_dir=folder.name if preparation else None)
     prep = []
     prepared = False
+    compared = False
     scripts = {'player': [], 'other': []}
+    if tactical:
+        scripts['player'] += [{'action': 'overlay'}, {'action': 'inspect', 'unit': 'Blue_Healer'},
+            {'action': 'propose', 'kind': 'move', 'args': {'unit': 'Blue_Healer', 'pos': [6, 2]}}]
+        if captures:
+            scripts['player'].append({'action': 'capture', 'path': str(captures / 'positioning.png')})
+        scripts['player'] += [{'action': 'cancel'}, {'action': 'inspect', 'unit': 'Blue_Captain'}]
+        scripts['other'].append({'action': 'overlay'})
     try:
         session = Session(sim)
         for index in range(120):
@@ -62,6 +70,8 @@ def plan(preparation=False):
                                  (owner, 'deposit', {'unit': captain, 'item': units[captain]['inventory'][0]['uid']}),
                                  (owner, 'deposit', {'unit': healer, 'item': units[healer]['inventory'][0]['uid']}),
                                  (owner, 'withdraw', {'unit': healer, 'item': mend})])
+                if tactical:
+                    prep = [step for step in prep if not (step[1] == 'deposit' and 'Captain' in step[2]['unit'])]
                 # Two confirmed generations keep the prepared boundary in fallback too.
                 prep += [('player', 'save_checkpoint', {}), ('other', 'save_checkpoint', {})]
                 prepared = True
@@ -73,6 +83,23 @@ def plan(preparation=False):
                     personal = next((u for u in state['units'] if u['owner'] == team and u['consumables']), None)
                     if personal:
                         kind, args = 'use', {'unit': personal['id'], **personal['consumables'][0]}
+            if tactical and not compared and state['campaign']['chapter'] == 'holding' and team == 'player':
+                captain = next(u for u in state['units'] if u['id'] == 'Blue_Captain')
+                iron = next(i for i in captain['inventory'] if i['nid'] == 'Iron_Axe')
+                hand = next(i for i in captain['inventory'] if i['nid'] == 'Hand_Axe')
+                common = next((a['target'] for a in captain['attacks'] if a['item'] == iron['uid'] and
+                               {'item': hand['uid'], 'target': a['target']} in captain['attacks']), None)
+                if common:
+                    script = scripts['player']
+                    script += [{'action': 'wait_revision', 'revision': packet['revision']},
+                               {'action': 'inspect', 'unit': captain['id']}]
+                    for label, item in (('iron', iron), ('hand', hand)):
+                        script += [{'action': 'select_item', 'index': captain['inventory'].index(item)},
+                                   {'action': 'propose', 'kind': 'attack', 'args': {'unit': captain['id'], 'item': item['uid'], 'target': common}}]
+                        if captures:
+                            script.append({'action': 'capture', 'path': str(captures / (label+'-forecast.png'))})
+                        script.append({'action': 'cancel'})
+                    compared = True
             # Revision barriers serialize readiness and prevent a stale base when
             # both commanders reach the intermission at almost the same instant.
             scripts[team].append({'action': 'wait_revision', 'revision': packet['revision']})
@@ -82,6 +109,8 @@ def plan(preparation=False):
                        'phase': state['phase'], 'id': 'plan_' + str(index), 'action': kind, **args}
             session.command(team, request, ('player', 'other'))
         assert session.packet['state']['status'] == 'victory', session.packet['result']
+        if tactical:
+            assert compared, 'No side-by-side weapon decision reached'
         for script in scripts.values():
             script.append({'action': 'wait_for', 'status': 'victory'})
         return scripts, session.packet['revision']

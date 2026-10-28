@@ -37,7 +37,7 @@ class AuthorityTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolError, '^' + code + '$'):
             self.issue(team, action, **kwargs)
         self.assertEqual(self.session.packet, before)
-        self.assertEqual(digest(self.sim.snapshot()), before['digest'])
+        self.assertEqual(digest(self.session.state_projection()), before['digest'])
 
     def test_only_assigned_active_army_can_command(self):
         self.unchanged_rejection('not_owner', unit='Green_Captain')
@@ -104,7 +104,7 @@ class AuthorityTests(unittest.TestCase):
             with self.subTest(code=code), self.assertRaisesRegex(ProtocolError, '^' + code + '$'):
                 self.session.command('player', request, ('player', 'other'))
         self.assertEqual(before, self.session.packet)
-        self.assertEqual(before['digest'], digest(self.sim.snapshot()))
+        self.assertEqual(before['digest'], digest(self.session.state_projection()))
 
     def test_peer_disconnect_pauses_commands(self):
         request = command(self.session.packet, unit='Blue_Captain')

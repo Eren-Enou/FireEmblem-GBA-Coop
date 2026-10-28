@@ -139,6 +139,18 @@ recruitment features or migration framework were introduced by Phase 5B.
 - [x] Reproducible graphical-client convergence and native/authority regressions.
 - [ ] Two-human usability and private two-PC TLS playtest.
 
+## Phase 5D: tactical readability and combat decisions
+
+- [x] Native current/moved enemy threat reach, individual/combined overlays.
+- [x] Native damage/hit/crit/doubling/counter/triangle forecasts for audited weapons.
+- [x] Cancellable local move/attack proposals and explicit confirmation.
+- [x] Native terrain bonuses, class movement costs, remaining movement and risk.
+- [x] Bounded shared tactical fields, no preview requests/RNG/state mutation.
+- [x] Phase 5C checkpoint compatibility and existing campaign/resource continuity.
+- [x] Reproducible positioning, weapon-choice and cooperative survival demonstration.
+- [ ] Complete the documented two-person readability/confirmation and two-PC pilot.
+- [ ] Expand audited complex skill/item forecasts and future full fog visibility.
+
 ## Remaining tactical/campaign parity (not implemented)
 
 Implementation methods are now documented in

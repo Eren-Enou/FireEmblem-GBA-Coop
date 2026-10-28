@@ -4,7 +4,10 @@ The Two Banners campaign now gives each captain a three-charge native Vulnerary.
 Each independent party starts with one Hand Axe and one Mend in its own convoy.
 The original Iron Axes and Heal staves remain. No new assets, engine changes or
 item formulas are introduced. Training, progression and Mutual Aid are unchanged.
-All host/client processes must run protocol **v6**.
+All host/client processes must run protocol **v7**.
+
+Phase 5D adds [tactical previews](TACTICS.md); preparation and checkpoint mechanics
+are unchanged, and Phase 5C saves remain compatible.
 
 ## Personal use during battle
 

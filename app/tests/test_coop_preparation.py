@@ -35,7 +35,7 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolError, '^' + code + '$'):
             self.issue(action, **args)
         self.assertEqual(self.session.packet, before)
-        self.assertEqual(digest(self.sim.snapshot()), before['digest'])
+        self.assertEqual(digest(self.session.state_projection()), before['digest'])
 
     def test_native_consumable_heal_cap_last_charge_removal_and_finished_action(self):
         self.start()

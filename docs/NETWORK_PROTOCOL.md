@@ -1,4 +1,4 @@
-# Tactical contract - version 6 with items and preparation
+# Tactical contract - version 7 with authoritative tactical information
 
 This is a **live tactical/campaign projection**. Checkpoint files use a separate
 native-state format; actual WAN play remains unverified. It supports loopback plaintext or optional verified TLS with
@@ -7,9 +7,36 @@ explicit remote endpoint configuration. The executable validators live in
 actions are rejected. No network payload is passed to pickle, eval, event script
 execution, engine save restoration or Python object construction.
 
+## Version 7 tactical fields and local proposals
+
+All peers use `v: 7`. `state.tactics` has exact `status,note,hit_mode,terrain,units,
+threats,forecasts` fields. The terrain grid matches board dimensions, with exact
+`name,defense,resistance,avoid,note` cells; unavailable numeric bonuses are null.
+Unit info has `unit,class_name,costs,routes`: a bounded movement-cost grid and
+`{pos,cost,left}` entries referencing native legal destinations. Threat records
+have `unit,supported,moves,weapons`; each weapon has `item,range,current,reach`.
+References must belong to the actual enemy inventory; cells are bounded/unique.
+
+Each forecast has `unit,item,target,supported,note,range,advantage,attack,counter,
+can_counter`, tied to that unit's legal attack hint. Attack/counter metric objects
+have `damage,hit,crit,count`; hit/crit are bounded 0-100 (crit may be null), count
+0-20 and damage 0-10000. Unknown effects require null metric/counter values and
+an explicit unavailable note. HIT describes a displayed native rating; the RNG
+mode is named. Grids are bounded by 64x64, units/threats by 100, weapons by 20,
+forecasts by 2000 and total encoded frame by the existing 262144-byte limit.
+Current small maps stay within that limit; larger scenarios require measurement.
+
+These fields are in the same revision/digest as the board. There is no preview
+request; unknown `preview` commands reject. Hover/overlay/propose/cancel changes
+only local UI. Confirmation sends an existing move/attack command with the current
+base. Resync, state changes and reconnect invalidate local proposals. All native
+legality, TLS, replay and ownership gates remain. Unsupported fog rejects before
+publishing any shared board; no new omniscient visibility contract is implied.
+See [TACTICS.md](TACTICS.md) for supported rules and intentional limits.
+
 ## Version 6 additions
 
-All packets use `v: 6`; exact field validation rejects older clients. Existing
+Version 6 introduced the fields below; current peers use v7. Existing
 session/id/revision/phase/digest gates cover every new command. `use` has exact
 `unit,item,target` fields and permits only a trusted native Vulnerary self target.
 `equip`, `deposit`, `withdraw` each have exact `unit,item` fields; no owner, party,
@@ -24,7 +51,7 @@ UIDs must be unique across all inventories and convoys. Checkpoint status also
 accepts `dirty`. Preparation clears readiness and marks dirty; only a subsequent
 saved/restored state permits Ready. Projection and commands remain JSON only.
 See [PREPARATION.md](PREPARATION.md). Earlier version-specific sections below
-record how the contract evolved; executable v6 validators are authoritative.
+record how the contract evolved; executable v7 validators are authoritative.
 
 ## Authority and process boundaries
 
@@ -72,7 +99,7 @@ enters the explicit dual-ready intermission before the next chapter.
   TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
   hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
-All messages have integer `v: 6` and a string `type`. Initial responses:
+All messages have integer `v: 7` and a string `type`. Initial responses:
 
 | Message | Other fields | Meaning |
 | --- | --- | --- |
@@ -89,7 +116,7 @@ A `command` requires these exact common fields:
 
 | Field | Type / constraint |
 | --- | --- |
-| `v`, `type` | Integer 6, string `command` |
+| `v`, `type` | Integer 7, string `command` |
 | `session` | Current host-generated session ID from the state packet |
 | `id` | 1–64 ASCII letters, digits, `_` or `-`; unique per army for this host session |
 | `revision` | Nonnegative integer copied from the current authoritative packet |
@@ -113,8 +140,9 @@ A `command` requires these exact common fields:
 
 The host independently computes legality; client movement/attack/heal hints are not
 trusted. Payloads cannot supply damage, HP, a path, random rolls, ownership or an
-event script. Movement is committed immediately, once per unit phase; v6 has no
-move-preview cancellation, canto commands, abilities, cross-army trading or arbitrary items.
+event script. Confirmed movement commits once through the existing native phase rules. Version 7
+adds local cancellation before confirmation; no network undo, new canto commands,
+abilities, cross-army trading or arbitrary items are introduced.
 
 Before applying a command the host also checks both seats, session, request ID,
 revision, digest and expected phase. Duplicate IDs, including rejected attempts,
@@ -144,7 +172,7 @@ Both clients receive the exact same `state` packet:
 
 | Field | Contents |
 | --- | --- |
-| `v`, `type` | Integer 6, string `state` |
+| `v`, `type` | Integer 7, string `state` |
 | `session`, `revision` | Session ID and monotonically increasing accepted-command revision |
 | `digest` | SHA-256 of canonical `state` JSON only: sorted dictionary keys, compact separators, UTF-8, no non-finite values |
 | `state` | Schema-validated tactical/campaign projection described below |
@@ -162,13 +190,13 @@ matching local engine/assets because they only present state; both must see the
 same session and fingerprint. Digests check this **projection**, not every LT
 internal registry, skill, party, event stack or campaign-save field.
 
-The progression fields introduced in v2 and retained in v6 are `mana` and `max_mana` (integers 0-10000,
+The progression fields introduced in v2 and retained in v7 are `mana` and `max_mana` (integers 0-10000,
 current <= maximum), plus `wexp` (at most 64 weapon IDs mapped to nonnegative,
 finite decimal strings <= 10000, at most 64 characters each). For example,
 `"Axe":"32.5"` preserves fractional engine modifiers without admitting JSON float
 payloads. These are read-only projections. Clients cannot submit XP, levels,
 stats, mana or weapon-XP changes; unknown command fields reject. v1 handshakes and
-packets reject rather than silently losing progression data. Use matching v6
+packets reject rather than silently losing progression data. Use matching v7
 host/clients. Version 3 adds a required `heals` choice list with the same strict
 `{item,target}` schema and inventory/target-ID checks as `attacks`. The new `heal`
 command has the exact same IDs/base fields as attack; it accepts no amount, HP,
@@ -176,7 +204,7 @@ XP, team or other effect data. Only Heal/Mend single-target spells are supported
 There is no generic Use, potion, revive, AoE, sequence, enemy-healing or ownership
 transfer capability. Moving before healing is allowed; healing consumes the
 normal action and blocks another move/attack/heal. Rejections preserve state/RNG.
-Host/clients must all use v6; v1/v2/v3/v4/v5 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`, plus `coop_campaign/v1`;
+Host/clients must all use v7; v1/v2/v3/v4/v5/v6 handshakes and snapshots reject. Scenario IDs include `coop_training/v1` or `coop_progression/v1` and `coop_healing/v1`, plus `coop_campaign/v1`;
 scenario version and wire version are separate.
 
 Authoritative result summaries place XP changes, level-ups and stat gains before
@@ -277,7 +305,7 @@ startup checkpoint restoration is separately supported as described above.
 
 ## Liveness and bounded private-session service (Phase 3A)
 
-Use the same current client/host commit. Current v6 includes campaign/roster metadata, weapon XP/mana and healing choices;
+Use the same current client/host commit. Current v7 includes campaign/roster metadata, weapon XP/mana and healing choices;
 clients must understand both those fields and the existing ping/pong controls. Older
 clients must update rather than silently disabling liveness checks.
 

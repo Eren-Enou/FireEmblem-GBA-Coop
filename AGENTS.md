@@ -22,7 +22,8 @@ Blue/Green parties and a live two-chapter campaign with dual-ready intermission.
 Phase 5B adds validated native chapter-boundary checkpoints, atomic generations
 and fresh-process recovery. Phase 5C adds native Vulnerary use and own-party intermission equip/convoy
 preparation, dirty/save acknowledgement and supported equipment recovery.
-Protocol v6 carries consumables, item explanations, convoys and checkpoint status. Mid-map saves and full tactical parity remain open.
+Phase 5D adds native read-only threat/forecast/terrain/path projections and
+cancellable movement/attack proposals. Protocol v7 carries tactical data plus consumables, item explanations, convoys and checkpoint status. Mid-map saves and full tactical parity remain open.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
@@ -71,7 +72,7 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   training: 95 starting XP and 40 human HP are declared fixture initial conditions,
   not rewards or normal campaign defaults. Keep `healing_demo.py` separate too;
   its injured frontliners, Cleric healers and two chokepoints are original fixture
-  conditions. Protocol v6 requires matching clients.
+  conditions. Protocol v7 requires matching clients.
 - Healing is a narrow Heal/Mend spell slice: delegate availability/rank/range/
   target restrictions and all effects to LT. Never equip non-equippable staves,
   transfer target ownership, accept client healing amounts, or turn `heal` into
@@ -98,6 +99,21 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   mutation clears both votes, publishes dirty status and blocks Ready until a
   confirmed save. Do not auto-save dirty changes or silently overwrite an
   incompatible old campaign. See [preparation](docs/PREPARATION.md).
+- Tactical data belongs in read-only `tactics.py`, attached in
+  `Session.state_projection`; `Simulation.snapshot` remains native-only. Tests of
+  complete transport state should compare `Session.state_projection`. Do not put
+  game mechanics in this presentation layer or mutate equipment/position, create
+  skills, run combat/actions/events or consume RNG for a preview. Use native path,
+  targeting and combat calculations. Unknown complex effects must show unavailable.
+- `tactics.py` is excluded from the native checkpoint manifest because it is
+  read-only; Phase 5C saves remain compatible. A future gameplay mutation there
+  would violate that boundary and must instead live in the native adapter/schema.
+  Shared projections fail closed for fog until a full visibility contract exists.
+- Client proposals bind session/revision/digest, require explicit confirmation,
+  and clear on state refresh/resync/disconnect. No speculative rollback or replay.
+  Show native HIT as a displayed rating, not exact True Hit odds; counts are up
+  to native strikes and counters require survival. Threats assume current blockers,
+  not a simulated future formation. Read [tactical controls](docs/TACTICS.md).
 - Keep `checkpoint.py` as a separate bounded, versioned native-state DTO/storage
   contract; never serialize display JSON or accept pickle/component code. Capture
   only settled Chapter 1 intermission before native cleanup; unsupported state

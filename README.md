@@ -23,7 +23,8 @@ Phase 5C adds [personal Vulneraries and intermission equipment preparation](docs
 Use a fresh `--checkpoint-dir artifacts/campaign-5c` for its changed native rules;
 older Phase 5B saves remain valid only with their matching checkout. Both
 commanders must save preparation before Ready can start Chapter 2.
-Protocol v6 requires matching host and clients.
+The [tactical interface](docs/TACTICS.md) adds enemy reach, native forecasts, terrain
+and cancellable move/attack proposals. Protocol v7 requires matching host and clients.
 [Campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) describe future work.
 
 Run these in three terminals from this repository root:

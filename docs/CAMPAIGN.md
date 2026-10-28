@@ -5,7 +5,7 @@ and Green have permanent characters and separate native parties. This is live
 continuity during battles, with Phase 5B [chapter-boundary checkpoints](CHECKPOINTS.md)
 for complete host shutdown/restart after Chapter 1. Mid-map saving, cross-army trading,
 recruitment, promotion, shops and deployment menus remain unsupported. All peers
-must run the same protocol-v6 version.
+must run the same protocol-v7 version.
 
 Phase 5C adds [personal items and intermission preparation](PREPARATION.md).
 Captains carry Vulneraries; separate party convoys offer Hand Axe and Mend.
@@ -30,8 +30,11 @@ to the host command. Keep certificate/name verification enabled. Separate-PC/WAN
 campaign play has not been tested; loopback TCP/TLS process tests are recorded in
 [TESTING.md](TESTING.md). Do not distribute an unauthorized sample-asset bundle.
 
-Click your unit to select it. Click a reachable empty tile to commit movement.
-Choose an item row or number key, then click an orange enemy to attack or mint
+Click your unit to select it. Click a reachable empty tile to propose movement,
+then Enter confirms or Esc cancels. F toggles enemy threats. See
+[TACTICS.md](TACTICS.md) for native forecasts and terrain/risk inspection.
+Choose an item row or number key, then hover an orange enemy for its forecast and click to propose an attack
+(Enter confirms), or click a mint
 ally to heal. W waits; E ends your phase; R resynchronizes. Blue and Green each
 control their own army during its phase; Red AI runs on the host after Green.
 

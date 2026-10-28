@@ -1,10 +1,10 @@
-"""Version 6, bounded JSON only. No engine imports or executable serialization."""
+"""Version 7, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
 import math
 import re
 
-VERSION = 6
+VERSION = 7
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -111,7 +111,7 @@ def validate_request(value):
 
 def validate_state(value):
     fields(value, ('campaign', 'scenario', 'ruleset', 'width', 'height', 'terrain', 'phase',
-                   'turn', 'status', 'objective', 'rng', 'units'))
+                   'turn', 'status', 'objective', 'rng', 'units', 'tactics'))
     for key in ('scenario', 'ruleset', 'phase', 'objective'):
         string(value[key], 512)
     integer(value['width'], 1, 64)
@@ -226,6 +226,7 @@ def validate_state(value):
                     integer(item['uses'], 0, 10000)
     for unit in value['units']:
         require(all(choice['target'] in ids for kind in ('attacks', 'heals', 'consumables') for choice in unit[kind]))
+    validate_tactics(value['tactics'], value)
     return value
 
 
@@ -243,3 +244,94 @@ def validate_packet(packet):
             string(text, 4096)
         require(packet['result']['team'] in TEAMS)
     return packet
+
+
+def validate_tactics(value, state):
+    fields(value, ('status', 'note', 'hit_mode', 'terrain', 'units', 'threats', 'forecasts'))
+    require(value['status'] in ('available', 'unavailable'))
+    string(value['note'], 256)
+    string(value['hit_mode'], 64)
+    width, height = state['width'], state['height']
+    units = {u['id']: u for u in state['units']}
+    def positions(values):
+        require(type(values) is list and len(values) <= width*height)
+        for pos in values: position(pos, width, height)
+        require(len({tuple(p) for p in values}) == len(values))
+    require(type(value['terrain']) is list and len(value['terrain']) == height)
+    for row in value['terrain']:
+        require(type(row) is list and len(row) == width)
+        for cell in row:
+            fields(cell, ('name', 'defense', 'resistance', 'avoid', 'note'))
+            string(cell['name']); string(cell['note'], 256)
+            for key in ('defense', 'resistance', 'avoid'):
+                if cell[key] is not None: integer(cell[key], -10000, 10000)
+    for key, maximum in (('units', 100), ('threats', 100), ('forecasts', 2000)):
+        require(type(value[key]) is list and len(value[key]) <= maximum)
+    infos = set()
+    for info in value['units']:
+        fields(info, ('unit', 'class_name', 'costs', 'routes'))
+        string(info['unit'])
+        require(info['unit'] in units and info['unit'] not in infos)
+        infos.add(info['unit']); string(info['class_name'])
+        require(type(info['costs']) is list and len(info['costs']) == height)
+        for row in info['costs']:
+            require(type(row) is list and len(row) == width)
+            for cost in row: integer(cost, 0, 10000)
+        require(type(info['routes']) is list and len(info['routes']) <= width*height)
+        destinations = []
+        for route in info['routes']:
+            fields(route, ('pos', 'cost', 'left'))
+            position(route['pos'], width, height)
+            integer(route['cost'], 0, 10000); integer(route['left'], 0, 10000)
+            require(route['pos'] in units[info['unit']]['moves'])
+            destinations.append(route['pos'])
+        positions(destinations)
+    enemies = set()
+    for threat in value['threats']:
+        fields(threat, ('unit', 'supported', 'moves', 'weapons'))
+        string(threat['unit'])
+        require(threat['unit'] in units and threat['unit'] not in enemies)
+        enemies.add(threat['unit'])
+        require(units[threat['unit']]['team'] in ('enemy', 'enemy2'))
+        require(type(threat['supported']) is bool)
+        positions(threat['moves'])
+        require(type(threat['weapons']) is list and len(threat['weapons']) <= 20)
+        weapons = set()
+        for weapon in threat['weapons']:
+            fields(weapon, ('item', 'range', 'current', 'reach'))
+            integer(weapon['item'])
+            require(weapon['item'] in {i['uid'] for i in units[threat['unit']]['inventory']} and weapon['item'] not in weapons)
+            weapons.add(weapon['item'])
+            ranges(weapon['range']); positions(weapon['current']); positions(weapon['reach'])
+    choices = set()
+    for forecast in value['forecasts']:
+        fields(forecast, ('unit', 'item', 'target', 'supported', 'note', 'range', 'advantage', 'attack', 'counter', 'can_counter'))
+        string(forecast['unit']); string(forecast['target'])
+        require(forecast['unit'] in units and forecast['target'] in units)
+        integer(forecast['item'])
+        choice = (forecast['unit'], forecast['item'], forecast['target'])
+        require(choice not in choices); choices.add(choice)
+        require({'item': forecast['item'], 'target': forecast['target']} in units[forecast['unit']]['attacks'])
+        require(type(forecast['supported']) is bool)
+        string(forecast['note'], 256); ranges(forecast['range'], empty=not forecast['supported'])
+        require(forecast['advantage'] in ('advantage', 'disadvantage', 'neutral', 'unknown'))
+        require(forecast['can_counter'] is None or type(forecast['can_counter']) is bool)
+        for key in ('attack', 'counter'):
+            if forecast[key] is not None:
+                fields(forecast[key], ('damage', 'hit', 'crit', 'count'))
+                for stat, maximum in (('damage', 10000), ('hit', 100), ('crit', 100), ('count', 20)):
+                    if stat == 'crit' and forecast[key][stat] is None: continue
+                    integer(forecast[key][stat], 0, maximum)
+        if forecast['supported']:
+            require(forecast['attack'] is not None and type(forecast['can_counter']) is bool)
+            require((forecast['counter'] is not None) == forecast['can_counter'])
+        else:
+            require(forecast['attack'] is None and forecast['counter'] is None and forecast['can_counter'] is None)
+    if value['status'] == 'unavailable':
+        require(not value['units'] and not value['threats'] and not value['forecasts'])
+
+
+def ranges(value, empty=False):
+    require(type(value) is list and (0 if empty else 1) <= len(value) <= 64)
+    for distance in value: integer(distance, 0, 99)
+    require(len(set(value)) == len(value))

@@ -1,6 +1,91 @@
 # Environment and verification
 
-## Phase 5C preparation verification
+## Phase 5D tactical verification
+
+From the actual repository root, using the existing Python 3.12 environment:
+
+```powershell
+$env:PATH = 'C:\Ruby33-x64\msys64\usr\bin;' + $env:PATH
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_tactics app.tests.test_coop_inventory_ui app.tests.test_coop_preparation app.tests.test_coop_checkpoint app.tests.test_coop_campaign app.tests.test_coop_healing app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_tactics app.tests.test_network_coop.ContractAndModelTests app.tests.test_coop_inventory_ui -q
+.venv\Scripts\python.exe -u utilities/smoke_network.py --tactical --tls
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --preparation --tls --recovery corrupt
+```
+
+Executed October 27, 2026: combined **218 passed in 543.395 seconds**, covering
+all 201 previously selected regressions plus the 17 tactical cases. After final
+client/presentation refinements, the focused command passed **25 in 50.474
+seconds** (an earlier pass was 49.850 seconds). A final explicit unsupported-RNG
+mode guard and normal-forecast/purity checks passed **3 in 3.900 seconds**:
+
+```powershell
+.venv\Scripts\python.exe -u -m unittest app.tests.test_coop_tactics.TacticalTests.test_unsupported_complex_forecast_and_fog_fail_closed app.tests.test_coop_tactics.TacticalTests.test_forecast_native_damage_hit_crit_and_weapon_tradeoff app.tests.test_coop_tactics.TacticalTests.test_queries_leave_full_native_state_rng_revision_and_equipment_unchanged -q
+```
+
+The combined run precedes only the documented client/presentation refinements
+and final unsupported-mode gate; the subsequent focused results cover them.
+The final initial-connection footer text was also checked in the render-only
+inspection. The native engine, Simulation, campaign, preparation and checkpoint
+code were not modified. No all-repository test claim is made.
+
+- TLS tactical campaign: `artifacts/network-smoke/run-61d62be7/`, host 126476,
+  graphical clients 33832/138868; **42 matching snapshots / revision 41 victory**.
+  Digest `ce72df1b7a3b560b27eb46b939acef9be8846248d58441a460837a130b894608`.
+  `positioning.png`, `iron-forecast.png`, `hand-forecast.png` are actual process
+  captures. Final presentation-only copies rendered from validated observed
+  snapshots are `artifacts/phase5d-ui-review/positioning.png`, `iron.png`, `hand.png`.
+  Inspected: distinct native reach/movement/proposed colours, destination danger,
+  costs, current-unit warning, selected item/counter metrics, readable counts,
+  text fit and no forecast/growth overlap. Equal target/revision Iron versus Hand
+  values are **11/85/6%** versus **10/70/6%** (damage/HIT/CRIT).
+- Native decision comparison printed `TACTICAL_COOP_VS_RECKLESS [(18, False),
+  (0, True)]`: guard-supported cross-army healing preserves Mira; exposed placement
+  is punished by native AI. The separate distance-two test proves real damage,
+  charge loss and no counter, while controlled doubling tests compare actual
+  native strike outcomes/durability to forecasts.
+- TLS/corrupt-current prepared recovery: `artifacts/checkpoint-smoke/run-036e397e/`,
+  hosts 123356/161132, clients 160604/144208 then 96968/155900; **30 + 30 matching
+  snapshots / new-session revision 29 victory**. Digest
+  `7c78e15602ee5d680392df21d72a1be05c27f1a089fc29ca7362033ed47c3538`.
+  Full native recapture verified, previous prepared generation 2 recovered and
+  old tokens/session requests rejected. Fresh host reconstruction and both
+  chapters still work with authoritative tactical metadata.
+- Actual old Phase 5C checkpoint `run-bf0f6134/checkpoints` was additionally
+  validated and restored in a new Python process with a new Session/v7 packet.
+  It prints exact `NATIVE_CHECKPOINT_VERIFIED` recapture hash
+  `03bbc53e40fab1b0a67b780e984b873d3677d8f17069238509300685d22b9f21` and
+  `PHASE5C_NATIVE_RESTORE_WITH_V7_OK`. No migration, bypass or rewrite was used.
+- The initial focused 13-case run had one failure because its unsupported-skill
+  fixture named nonexistent `Vantage`; replacing it with the trusted database's
+  `Luna` correctly exercises the unavailable-forecast gate. Later 15-case and
+  combined 17-case tactical coverage includes that corrected fixture.
+
+The 17 tactical cases cover full native state/RNG/UID/action/record query purity;
+movement, occupied stops and walls; native terrain costs and actual Forest DEF/
+avoid forecast changes; Iron/Hand reach/damage/hit differences; real distance-two
+combat without a counter; native attacking/defending doubling, durability limit,
+disabled crit; unknown-skill forecasts and fog refusal; bounded reference/schema
+rejections; local proposal/cancel/confirmation and resync/disconnect invalidation;
+safe/exposed healer decisions under native AI; two independent graphical clients
+finishing both chapters; and real SDL mouse/keyboard move/attack confirmation.
+No engine or combat formula was modified to obtain these results.
+
+The graphical tactical driver retains both axes for comparison after intermission
+and adds only local overlay/propose/cancel/capture steps between ordinary native
+commands. This differs intentionally from the Phase 5C prepared driver, which
+stores Iron Axe. Their expected revision counts are separate. Complete observed
+state histories include all tactical fields and match between both renderers.
+All screenshots/reports/save generations/credentials stay ignored under artifacts.
+
+Native projection purity compares deep unit/item/skill saves, action flags and log
+size, events, combat/progression records, all RNG streams and UID generators.
+There is no second solver or speculative equip/movement to restore after a query.
+Current-occupancy threat limitations, native displayed HIT versus exact RN odds,
+unsupported effects and human playtest requirements are in [TACTICS.md](TACTICS.md).
+Only the explicitly recorded tests were run; no full repository or two-human/WAN
+acceptance is implied. OpenSSL PATH changes apply only to the test process.
+
+## Historical Phase 5C preparation verification
 
 Run from the actual `FE-GBA-Coop` repository root with the existing Python 3.12
 environment. OpenSSL is needed for TLS identity tests; prepend its existing

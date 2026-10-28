@@ -10,6 +10,10 @@ This format supports the original Two Banners campaign's nonterminal boundary,
 not mid-map Chapter 1/2 saves or a final-victory archive. It supports own-party preparation; it does not add cross-army trading,
 recruitment, promotion, deployment menus, migrations or live-session loading.
 
+Phase 5D adds only read-only tactical presentation and local confirmation. Its
+protocol v7 projections are separate from this DTO; native Phase 5C checkpoints
+remain compatible, with exact recapture still required before serving clients.
+
 ## Phase 5C compatibility and preparation
 
 Read [PREPARATION.md](PREPARATION.md) for controls and the exact five-item scope.
@@ -65,7 +69,7 @@ TLS works with the same certificate/name/bind options as
 [INTERNET_PLAY.md](INTERNET_PLAY.md). Supply those options again on the restored
 host; TLS keys and army tokens are never in a checkpoint. Redistribute the new
 private invitations to the commanders. Old tokens and old-session commands
-reject. All peers must update to **protocol v6**. Actual separate-PC/WAN recovery
+reject. All peers must update to **protocol v7**. Actual separate-PC/WAN recovery
 and two-human play remain unverified.
 
 The restored intermission retains character health and permanent state. Its
