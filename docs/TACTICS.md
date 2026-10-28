@@ -1,6 +1,12 @@
 # Phase 5D: tactical reading and decisions
 
-The host supplies tactical information with each committed protocol-v7 snapshot.
+Current experimental branch uses wire v8; all peers must match. Sequential stays
+at the default scheduler. [Shared-turn comparison](SHARED_TURNS.md) adds opt-in
+live-only shared rounds, I details and prominent outcome/retry panels. Shared
+checkpoint/restore and intermission preparation are explicitly disabled.
+
+
+The host supplies tactical information with each committed protocol-v8 snapshot.
 Clients select and compare that information locally. Hovering, toggling an overlay,
 proposing, cancelling or comparing weapons sends no preview request, consumes no
 request IDs, advances no revision and cannot control another army. Actual confirmed
@@ -16,7 +22,7 @@ Use the existing Python 3.12 environment from the repository root:
 .venv\Scripts\python.exe run_network.py client --session-file artifacts/network/green.json
 ```
 
-All peers must update to **protocol v7**. The normal campaign and trusted save
+All peers must update to **protocol v8**. The normal campaign and trusted save
 format are unchanged; Phase 5C chapter checkpoints remain compatible. Restore
 with the existing `host --restore PATH` command and new invitations. Remote
 verified TLS uses [INTERNET_PLAY.md](INTERNET_PLAY.md). Actual WAN/two-PC acceptance

@@ -1,5 +1,95 @@
 # Environment and verification
 
+## Phase 6A experimental shared turns (separate branch)
+
+This branch adds an opt-in shared allied round and playtest UX. Sequential remains
+`run_network.py host`'s default; stable `main` remains at `8027a8dea`. See
+[SHARED_TURNS.md](SHARED_TURNS.md) for the exact native round policy, one-PC
+comparison, checkpoint restrictions and limitations. The current experiment lives
+on `codex/shared-allied-turns`; it has not been merged into main.
+
+
+## Phase 6A regression and process procedures
+
+```powershell
+$env:PATH = 'C:\Ruby33-x64\msys64\usr\bin;' + $env:PATH
+.venv\Scripts\python.exe -u -m unittest app.tests.test_shared_turns app.tests.test_coop_tactics app.tests.test_coop_inventory_ui app.tests.test_coop_preparation app.tests.test_coop_checkpoint app.tests.test_coop_campaign app.tests.test_coop_healing app.tests.test_coop_progression app.tests.test_network_playability app.tests.test_network_tls app.tests.test_network_coop app.tests.test_local_coop app.tests.test_ai_blocked_path_fallback app.tests.test_secondary_ai_blocked_path app.tests.test_move_selection_lifecycle app.tests.test_canto_movement app.tests.test_save_round_trip app.tests.test_classic_exp app.tests.test_level_up_reroll app.tests.test_level_up_timing -q
+.venv\Scripts\python.exe -u utilities/smoke_shared_turns.py --tls
+.venv\Scripts\python.exe -u utilities/smoke_shared_turns.py --tls --defeat
+.venv\Scripts\python.exe -u utilities/smoke_checkpoint.py --preparation --tls --recovery corrupt
+```
+
+Initial focused shared tests: **8 passed / 13.478 seconds**. TLS shared campaign:
+**46 identical snapshots / revision 45 victory**, both chapters, independent host
+108652 and rendering clients 89368/149992, `artifacts/shared-smoke/run-b9c3fbfb`.
+Sequential prepared/corrupt-current TLS recovery: **30 + 30 identical snapshots /
+new-session revision 29 victory**, `artifacts/checkpoint-smoke/run-3e618f4c`.
+The exact digests and later final checks are in [SHARED_TURNS.md](SHARED_TURNS.md).
+
+A fresh-process restore of the actual old Phase 5C save
+`artifacts/checkpoint-smoke/run-bf0f6134/checkpoints` printed
+`NATIVE_CHECKPOINT_VERIFIED 03bbc53e40fab1b0a67b780e984b873d3677d8f17069238509300685d22b9f21`
+and `PHASE5C_NATIVE_RESTORE_WITH_V8_OK`; its Session validated wire v8, sequential
+mode and intermission. Old checkpoints were read, not migrated or rewritten.
+The shared CLI rejected both explicit checkpoint-directory and restore arguments
+with exit 2 before startup. No forbidden directory was created.
+
+Launcher check invoked real `run_solo.main` with shared arguments, recorded the
+three real child PIDs (32324/153068/164104), waited two seconds with all alive,
+injected KeyboardInterrupt at its wait boundary and verified all owned children
+exited. This checks startup/cleanup; it is not a human playtest.
+
+Final focused repair/input/model run: **20 passed in 34.951 seconds**. The first
+combined run executed 229 tests in 545.681 seconds with one failure and one error:
+a legacy assertion expected the raw rejection message, and the new artificial
+50-pongs/second heartbeat test hit admission limits. Raw diagnostic rejection text
+is now preserved alongside separate friendly gameplay feedback; heartbeat cadence
+was corrected to 10/second. An intermediate retry was interrupted to fix a new
+test teardown ordering hang (closing live clients before waiting for server close).
+The focused pass covers both repairs, shared disconnect/readiness and existing
+inventory/model input checks. Admission limits and native gameplay were not relaxed.
+
+Final TLS shared victory: `artifacts/shared-smoke/run-6909c8c9`, host **152440**,
+clients **117768/153096**, **46 matching snapshots / revision 45 victory**, digest
+`fb75837f2a6176a5304a473fbc1b052ef1a2c30404af64f813ada459a177107d`.
+Final TLS passive defeat: `artifacts/shared-smoke/run-2b0eb690`, host **144124**,
+clients **5464/18848**, **13 matching snapshots / revision 12 defeat**, digest
+`076942e42f41be7ee660d058e3d47b01e8f7e9d68be5ae88a1389e374464c37a`.
+The latter is a real native Red AI loss with **Blue army eliminated**, not a
+client-injected terminal flag. Opening, Chapter 1 one-ready, victory and defeat
+captures were inspected. Read-only renders from the final revision-6 packet
+(`artifacts/phase6a-ui-review`) compare basic/details forecast views: the same
+packet/proposal, one observed state, no pending command and no sends. Stats,
+WEXP, advanced notes and digests appear only in details; no overlaps were found.
+
+An additional audit of those committed victory observations checked every
+heal/attack's native action completion, XP increase, nondecreasing WEXP and
+nonnegative own-item charge loss, plus unchanged units/RNG at first Ready.
+Blue performed **6 heals / 4 attacks**, Green **5 / 5**, with **9 own-action
+charges each**. Each captain had one missed attack with no charge loss, consistent
+with LT's native Uses.on_miss/uses_options policy. No synthetic damage or XP.
+Final surviving characters: Aren L2/89 XP, Mira L2/61, Tovan L3/72, Sela L2/50.
+
+A second fresh shared launch (133524/109956/164972) and a sequential launch
+(147524/161056/134432) both started three real processes and cleaned up all owned
+children. New invitations differed between runs; the earlier invitation file was
+byte-for-byte unchanged. No prior checkpoint directory was reused.
+
+Final combined regression: **229 tests passed in 526.102 seconds** on October
+28, 2026 (`artifacts/phase6a-regression-final.log`), using the full command in
+[TESTING.md](TESTING.md). This includes all 218 selected prior checks plus the 11
+shared-round cases. No runtime or test source changed after this passing run.
+The run covers native shared mechanics, same-revision races, disconnect during
+resolution/rejoin, model pending state, tactical/SDL input, sequential campaigns,
+prepared checkpoint save/recovery, healing/progression, transport/TLS and selected
+native movement/AI/XP/save regressions. This is a targeted regression selection,
+not the full upstream suite. Final asset/credential audit stages only Python and
+Markdown; native engine, sequential save rules and attribution remain unchanged.
+
+
+No full-repository or separate-PC/WAN claim is made. Human comparison instructions,
+explicit round policy and experimental limits: [SHARED_TURNS.md](SHARED_TURNS.md).
+
 ## Phase 5D tactical verification
 
 From the actual repository root, using the existing Python 3.12 environment:

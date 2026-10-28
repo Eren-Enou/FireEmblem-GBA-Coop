@@ -1,5 +1,11 @@
 # Phase 5C: equipment and personal resources
 
+Current experimental branch uses wire v8; all peers must match. Sequential stays
+at the default scheduler. [Shared-turn comparison](SHARED_TURNS.md) adds opt-in
+live-only shared rounds, I details and prominent outcome/retry panels. Shared
+checkpoint/restore and intermission preparation are explicitly disabled.
+
+
 The Two Banners campaign now gives each captain a three-charge native Vulnerary.
 Each independent party starts with one Hand Axe and one Mend in its own convoy.
 The original Iron Axes and Heal staves remain. No new assets, engine changes or

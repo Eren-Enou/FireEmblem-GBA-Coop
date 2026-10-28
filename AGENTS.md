@@ -23,7 +23,7 @@ Phase 5B adds validated native chapter-boundary checkpoints, atomic generations
 and fresh-process recovery. Phase 5C adds native Vulnerary use and own-party intermission equip/convoy
 preparation, dirty/save acknowledgement and supported equipment recovery.
 Phase 5D adds native read-only threat/forecast/terrain/path projections and
-cancellable movement/attack proposals. Protocol v7 carries tactical data plus consumables, item explanations, convoys and checkpoint status. Mid-map saves and full tactical parity remain open.
+cancellable movement/attack proposals. Protocol v8 carries shared-turn/outcome metadata, tactical data plus consumables, item explanations, convoys and checkpoint status. Mid-map saves and full tactical parity remain open.
 
 Read [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md),
 [roadmap](docs/ROADMAP.md), [testing](docs/TESTING.md) and
@@ -32,6 +32,34 @@ before changing the prototype. These are the
 canonical project records; `docs/source/` remains upstream engine documentation.
 Read [Internet play](docs/INTERNET_PLAY.md) and
 [campaign/parity methods](docs/CAMPAIGN_AND_PARITY.md) for the next stages.
+
+## Phase 6A experimental branch
+
+- `codex/shared-allied-turns` is an opt-in experiment; sequential stays default,
+  and stable main must not be replaced or automatically merged. Read
+  [shared rounds](docs/SHARED_TURNS.md) before modifying phase scheduling.
+- `SharedSimulation` extends the unchanged sequential adapter in `shared_turns.py`.
+  Enter Green native phase-change/upkeep only at the opening barrier, before
+  either army acts. Execute each owned action with the native current-team pointer
+  set to its owner; restore Blue before publication. Never reset flags or run
+  upkeep between interleaved commands. Both Ready votes close Blue then Green
+  endsteps, followed by native Red AI and next-round Blue/Green opening upkeep.
+- Readiness belongs to the living host and survives rejoin. One vote locks only
+  that army. No undo-ready or automatic command replay. Preserve Session's lock
+  across every native generator yield and publication; no second native thread.
+- Shared mode forbids checkpoint directories and restore before engine startup.
+  Shared campaign preparation/storage is disabled; both chapters can continue live.
+  Do not add the experimental module to the sequential checkpoint manifest or
+  weaken validation to load a shared state. Existing sequential native files and
+  save schema remain unchanged. Fresh retry uses a new process and credentials.
+- Wire v8 adds `turns` and `outcome`. Both clients must update. A pending command
+  clears only on its own army's matching result or matching rejection; another
+  army's revision or colliding request ID is not an acknowledgement. Stale
+  requests resync, clear proposals, and require a new explicit choice.
+- Basic UI keeps HP/actions/readiness/danger/forecast visible. I reveals full
+  stats/WEXP/calculation notes/digests; terminal overlay explains shared outcome.
+  `run_solo.py` creates fresh private run directories and terminates only its own
+  children. Never silently reuse old invitations or overwrite prior checkpoints.
 
 ## Repository
 
@@ -72,7 +100,7 @@ Read [Internet play](docs/INTERNET_PLAY.md) and
   training: 95 starting XP and 40 human HP are declared fixture initial conditions,
   not rewards or normal campaign defaults. Keep `healing_demo.py` separate too;
   its injured frontliners, Cleric healers and two chokepoints are original fixture
-  conditions. Protocol v7 requires matching clients.
+  conditions. Protocol v8 requires matching clients.
 - Healing is a narrow Heal/Mend spell slice: delegate availability/rank/range/
   target restrictions and all effects to LT. Never equip non-equippable staves,
   transfer target ownership, accept client healing amounts, or turn `heal` into

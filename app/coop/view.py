@@ -72,6 +72,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
     item_index = 0
     convoy_index = 0
     combined_threat = False
+    details = False
     error = None
     index = 0
     started = time.monotonic()
@@ -128,6 +129,8 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         model.cancel_decision()
+                    elif event.key == pygame.K_i:
+                        details = not details
                     elif event.key == pygame.K_f:
                         combined_threat = not combined_threat
                     elif event.key == pygame.K_RETURN and model.decision and model.can_act:
@@ -215,7 +218,10 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 require(time.monotonic() - started < timeout, 'script_timeout')
                 require(not model.message.startswith('Rejected:'), model.message)
                 if index < len(script):
-                    if script[index]['action'] == 'overlay':
+                    if script[index]['action'] == 'details':
+                        details = script[index].get('enabled', True)
+                        index += 1
+                    elif script[index]['action'] == 'overlay':
                         combined_threat = script[index].get('enabled', True)
                         index += 1
                     elif script[index]['action'] == 'cancel':
@@ -243,9 +249,19 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
             # Only original geometric tokens and system fonts are used here.
             screen.fill((19, 25, 37))
             text(state['campaign']['title'] if state['campaign'] else 'TWO BANNERS / CO-OP', 32, 22, big=True)
-            text(f"You: {NAMES[model.team]}   Turn {state['turn']}   Phase: {NAMES[state['phase']]}   {state['status'].upper()}", 32, 64)
+            phase_name = 'ALLIED / SHARED' if state['turns']['mode'] == 'shared' else NAMES[state['phase']]
+            text(f"You: {NAMES[model.team]}   Round {state['turn']}   {phase_name}   {state['status'].upper()}", 32, 64)
             connected = ', '.join(NAMES[t] for t in model.peers) or 'none'
-            text(f"Connected: {connected}   Revision {model.packet['revision']}   Check {model.packet['digest'][:12]}", 32, 90)
+            if details:
+                text(f"Connected: {connected}   Revision {model.packet['revision']}   Check {model.packet['digest'][:12]}", 32, 90)
+            elif state['turns']['mode'] == 'shared':
+                labels = []
+                for team in ('player', 'other'):
+                    available = sum(u['team'] == team and not u['dead'] and not u['finished'] for u in state['units'])
+                    labels.append(NAMES[team] + (': READY' if team in state['turns']['ready'] else f': {available} active'))
+                text(' | '.join(labels) + (' | Connected' if len(model.peers) == 2 else ' | PAUSED: peer missing'), 32, 90)
+            else:
+                text('Connected: ' + connected + ' | Details [I]', 32, 90)
             movement_threat, current_threat, potential_threat = threat_layers(state, selected, combined_threat) if model.preview_readable else (set(), set(), set())
             for y, row in enumerate(state['terrain']):
                 for x, terrain in enumerate(row):
@@ -283,20 +299,21 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 pygame.draw.rect(screen, (122, 225, 139), (cx - 15, cy + 14, 30 * current['hp'] // max(1, current['max_hp']), 4))
             text('SELECTED UNIT', 670, 137, big=True)
             text('All threats [F]: ' + ('ON' if combined_threat else 'OFF / selected enemy only'), 670, 90)
-            text(connection.security, 670, 192)
+            if details:
+                text(connection.security, 670, 192)
             if state['status'] != 'playing':
                 text('Shared ' + state['status'], 670, 167)
             elif error:
                 text('DISCONNECTED / REJOIN', 670, 167, (255, 125, 80))
             elif not model.can_act:
-                status = 'Resolving command...' if model.pending else 'Resynchronizing...' if model.syncing else 'Waiting for both players' if len(model.peers) != 2 else 'Waiting for your phase'
+                status = 'Resolving command...' if model.pending else 'Resynchronizing...' if model.syncing else 'Waiting for both players' if len(model.peers) != 2 else 'Army READY; waiting for ally' if model.team in state['turns']['ready'] else 'Waiting for your phase'
                 text(status, 670, 167)
             else:
-                text('Your army is ready', 670, 167, COLORS[model.team])
+                text('Choose an action', 670, 167, COLORS[model.team])
             if unit:
                 text(unit['name'].replace('_', ' '), 670, 218, COLORS[unit['team']])
                 text(f"HP {unit['hp']}/{unit['max_hp']}   Level {unit['level']} XP {unit['exp']}", 670, 248)
-                text('Finished' if unit['finished'] else 'Moved' if unit['moved'] else 'Ready to move', 670, 278)
+                text(('Finished' if unit['finished'] else 'Moved; action available' if unit['moved'] else 'Move / action available') + f" | Move {unit['movement']}", 670, 278)
                 info = next((i for i in state['tactics']['units'] if i['unit'] == unit['id']), None)
                 text((info['class_name'] if info else unit['class']) + ' / ' + NAMES[unit['team']], 670, 300)
                 for i, item in enumerate(unit['inventory']):
@@ -310,12 +327,15 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                         text('Use [U]: ' + ('available' if legal and model.can_act else 'needs wound/turn/action'), 670, 424)
                 text('Equipped: ' + next((i['name'] for i in unit['inventory'] if i['uid'] == unit['equipped']), 'none'), 670, 404)
                 text('Mint: heal/use; orange: preview attack', 670, 486)
-                stats = list(unit['stats'].items())
-                for row in range(0, len(stats), 3):
-                    text('  '.join(f'{key}:{value}' for key, value in stats[row:row+3]), 670, 514 + row // 3 * 22)
-                text(f"Mana {unit['mana']}/{unit['max_mana']}", 670, 612)
-                weapons = ', '.join(f'{key}:{value}' for key, value in unit['wexp'].items() if float(value))
-                text('WEXP ' + weapons, 670, 636)
+                if not details:
+                    text('Full stats / weapon XP / diagnostics [I]', 670, 507)
+                if details:
+                    stats = list(unit['stats'].items())
+                    for row in range(0, len(stats), 3):
+                        text('  '.join(f'{key}:{value}' for key, value in stats[row:row+3]), 670, 514 + row // 3 * 22)
+                    text(f"Mana {unit['mana']}/{unit['max_mana']}", 670, 612)
+                    weapons = ', '.join(f'{key}:{value}' for key, value in unit['wexp'].items() if float(value))
+                    text('WEXP ' + weapons, 670, 636)
             if unit and unit['pos'] and unit['team'] in ('player', 'other') and state['status'] == 'playing':
                 sources, complete = danger(state, unit['pos'])
                 text('Current unit: ' + ('preview paused' if not model.preview_readable else 'THREATENED' if sources else 'outside shown reach' if complete else 'threat unknown'), 670, 656, (255, 195, 120))
@@ -330,7 +350,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                     text(f"{NAMES[member['owner']]} {member['name']} L{member['level']} XP {member['exp']} " + ('FALLEN' if member['dead'] else 'SURVIVED'), 48, 255 + row*48, COLORS[member['team']])
                     text(items, 48, 276 + row*48)
                 text(state['campaign']['checkpoint']['message'][:60], 48, 445, (242, 199, 119))
-                text('Select own roster + item; Equip [Q] / Deposit [D]', 48, 465)
+                text('Shared experiment: preparation/saves disabled' if state['turns']['mode'] == 'shared' else 'Select own roster + item; Equip [Q] / Deposit [D]', 48, 465)
                 text('Your convoy: click or arrows; Take [T]', 48, 486)
                 convoy = state['campaign']['convoys'][model.team]
                 convoy_index = min(convoy_index, max(0, len(convoy)-1))
@@ -340,7 +360,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                     text(('> ' if row == convoy_index else '  ') + item['name'] + ' (' + str(item['uses']) + ')', 48, 506 + (row-start)*24)
                 if convoy:
                     text(convoy[convoy_index]['effect'][:59], 48, 578, (143, 213, 239))
-                text('Save [S] then both Ready [E]. Prep clears votes.', 48, 598)
+                text('Both Ready [E] for next chapter; progress is live only.' if state['turns']['mode'] == 'shared' else 'Save [S] then both Ready [E]. Prep clears votes.', 48, 598)
             mouse_x, mouse_y = pygame.mouse.get_pos()
             hover = ((mouse_x - LEFT) // tile, (mouse_y - TOP) // tile)
             tile_hint = f'Tile {hover}: ' if 0 <= hover[0] < state['width'] and 0 <= hover[1] < state['height'] else ''
@@ -393,10 +413,11 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                         a, c = forecast['attack'], forecast['counter']
                         text(f"DMG {a['damage']} x{a['count']}  HIT {a['hit']}/100  CRIT {str(a['crit'])+'%' if a['crit'] is not None else '--'}", 688, 744)
                         text('Counter: ' + (f"{c['damage']} x{c['count']}  HIT {c['hit']}/100  CRIT {str(c['crit'])+'%' if c['crit'] is not None else '--'}" if c else 'NO (native range/availability rules)'), 688, 774)
-                        text('Range ' + ','.join(map(str, forecast['range'])) + ' | Triangle: ' + forecast['advantage'], 688, 804)
-                        text('HIT = displayed rating; native ' + state['tactics']['hit_mode'], 688, 834)
-                        text('Up to shown strikes; KO/death can stop combat.', 688, 864)
-                        text('Counter only if defender survives the opening.', 688, 886)
+                        if details:
+                            text('Range ' + ','.join(map(str, forecast['range'])) + ' | Triangle: ' + forecast['advantage'], 688, 804)
+                            text('HIT = displayed rating; native ' + state['tactics']['hit_mode'], 688, 834)
+                            text('Up to shown strikes; KO/death can stop combat.', 688, 864)
+                            text('Counter only if defender survives the opening.', 688, 886)
                     else:
                         for row, line in enumerate(textwrap.wrap(forecast['note'], 51)):
                             text(line, 688, 748+row*22, (255, 195, 120))
@@ -413,7 +434,7 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                 else:
                     text('Select your weapon; hover a legal enemy.', 688, 722)
                     text('Click target to propose; Enter confirms.', 688, 752)
-                if terrain_pos:
+                if details and terrain_pos:
                     sources, complete = danger(state, terrain_pos) if model.preview_readable else ([], False)
                     source_text = '; '.join(s['enemy'] + ' ' + s['weapon'] + ' R' + ','.join(map(str, s['range'])) for s in sources)
                     for row, line in enumerate(textwrap.wrap(source_text or ('No shown weapon reaches this tile' if complete else 'Incomplete threat information'), 62)[:2]):
@@ -424,14 +445,29 @@ def run(connection, script=None, report=None, screenshot=None, timeout=45):
                     continue
                 enabled = not error and (kind == 'sync' or kind == 'end_phase' and model.can_ready or model.can_act and (kind != 'wait' or unit and unit['team'] == model.team and not unit['finished']))
                 pygame.draw.rect(screen, (53, 76, 100) if enabled else (30, 35, 45), rect, border_radius=5)
-                text({'wait': 'Wait [W]', 'end_phase': 'Ready [E]' if continuation == 'ready' else 'End phase [E]', 'sync': 'Resync [R]'}[kind], rect.x + 12, rect.y + 8)
-            message = ('Both armies connected; inspect before committing.' if model.message == 'Connected; waiting for both armies' and len(model.peers) == 2 else model.message)
+                text({'wait': 'Wait [W]', 'end_phase': 'Ready [E]' if continuation == 'ready' or state['turns']['mode'] == 'shared' else 'End phase [E]', 'sync': 'Resync [R]'}[kind], rect.x + 12, rect.y + 8)
+            message = ('Both armies connected; inspect before committing.' if model.message == 'Connected; waiting for both armies' and len(model.peers) == 2 else model.message if error or details else model.feedback)
             for i, line in enumerate(textwrap.wrap(message, 62)[:3]):
                 text(line, 32, 758 + i * 19, (242, 199, 119))
-            text('RECENT CHARACTER GROWTH', 32, 825, (143, 213, 239))
-            recent = ' | '.join(model.level_ups[-2:] + model.progression[-1:]) or 'Combat XP and level-ups appear here; select a unit to inspect stats.'
-            for i, line in enumerate(textwrap.wrap(recent, 62)[:2]):
-                text(line, 32, 850 + i * 19, (161, 230, 172))
+            if details:
+                text('RECENT CHARACTER GROWTH', 32, 825, (143, 213, 239))
+                recent = ' | '.join(model.level_ups[-2:] + model.progression[-1:]) or 'Combat XP and level-ups appear here; select a unit to inspect stats.'
+                for i, line in enumerate(textwrap.wrap(recent, 62)[:2]):
+                    text(line, 32, 850 + i * 19, (161, 230, 172))
+            if state['status'] in ('victory', 'defeat', 'fault'):
+                shade = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+                shade.fill((5, 10, 18, 205))
+                screen.blit(shade, (0, 0))
+                pygame.draw.rect(screen, (27, 37, 51), (150, 255, 940, 390), border_radius=12)
+                color = (135, 235, 165) if state['status'] == 'victory' else (255, 155, 125)
+                text('SHARED ' + state['status'].upper(), 185, 288, color, big=True)
+                for row, line in enumerate(textwrap.wrap(state['outcome'] or 'Battle ended.', 86)):
+                    text(line, 185, 345 + row*24, color)
+                text('Retry: close both clients and stop the host / solo launcher.', 185, 420)
+                text('Rerun your launch command for a fresh host and new invitations.', 185, 450)
+                text('Solo launcher: Ctrl+C, then run the same command again.', 185, 480)
+                text('Shared mode has no saves. Sequential checkpoints remain on disk.', 185, 530)
+                text('Close this window to exit.', 185, 585)
             pygame.display.flip()
             if script is not None and index == len(script) and not model.pending:
                 if screenshot:

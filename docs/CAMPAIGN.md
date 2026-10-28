@@ -1,11 +1,17 @@
 # Two Banners: cooperative campaign
 
+Current experimental branch uses wire v8; all peers must match. Sequential stays
+at the default scheduler. [Shared-turn comparison](SHARED_TURNS.md) adds opt-in
+live-only shared rounds, I details and prominent outcome/retry panels. Shared
+checkpoint/restore and intermission preparation are explicitly disabled.
+
+
 Phase 5A links two original chapters in one authoritative LT host session. Blue
 and Green have permanent characters and separate native parties. This is live
 continuity during battles, with Phase 5B [chapter-boundary checkpoints](CHECKPOINTS.md)
 for complete host shutdown/restart after Chapter 1. Mid-map saving, cross-army trading,
 recruitment, promotion, shops and deployment menus remain unsupported. All peers
-must run the same protocol-v7 version.
+must run the same protocol-v8 version.
 
 Phase 5C adds [personal items and intermission preparation](PREPARATION.md).
 Captains carry Vulneraries; separate party convoys offer Hand Axe and Mend.

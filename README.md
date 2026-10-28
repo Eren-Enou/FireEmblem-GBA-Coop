@@ -1,3 +1,6 @@
+Experimental shared-turn comparison: [Phase 6A instructions](docs/SHARED_TURNS.md).
+Sequential remains the default; shared checkpoints are disabled.
+
 # Two Banners — cooperative tactical prototype
 
 The project provides one authoritative Lex Talionis host and **two independent

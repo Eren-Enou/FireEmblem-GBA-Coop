@@ -1,4 +1,4 @@
-# Tactical contract - version 7 with authoritative tactical information
+# Tactical contract - version 8 with shared-round metadata
 
 This is a **live tactical/campaign projection**. Checkpoint files use a separate
 native-state format; actual WAN play remains unverified. It supports loopback plaintext or optional verified TLS with
@@ -7,9 +7,26 @@ explicit remote endpoint configuration. The executable validators live in
 actions are rejected. No network payload is passed to pickle, eval, event script
 execution, engine save restoration or Python object construction.
 
-## Version 7 tactical fields and local proposals
+## Version 8 shared turns and terminal feedback
 
-All peers use `v: 7`. `state.tactics` has exact `status,note,hit_mode,terrain,units,
+All peers use `v: 8`. The exact state schema adds `turns: {mode, ready}`:
+mode is `sequential` or `shared`, ready is a unique list of at most two valid army
+IDs, empty in sequential mode. `outcome` is null or a bounded 256-character terminal
+explanation. These fields participate in the state digest. Public phase remains
+`player` at shared allied boundaries; never infer ownership from it alone.
+See [shared policy](SHARED_TURNS.md) for native scheduling and save restrictions.
+`end_phase` means that army's shared Ready vote. `ready` still means campaign
+intermission readiness. Commands otherwise retain exact existing field sets.
+
+Same-revision concurrent requests serialize: one commits, stale requests reject
+before native mutation/RNG. Clients resync and require another explicit choice;
+no automatic replay. Pending clears only for the same army's matching result or
+matching rejection, not an unrelated state update or another army's matching ID.
+Disconnected sessions pause new requests while accepted resolution completes.
+
+## Version 7 tactical fields and local proposals (retained in v8)
+
+`state.tactics` has exact `status,note,hit_mode,terrain,units,
 threats,forecasts` fields. The terrain grid matches board dimensions, with exact
 `name,defense,resistance,avoid,note` cells; unavailable numeric bonuses are null.
 Unit info has `unit,class_name,costs,routes`: a bounded movement-cost grid and
@@ -99,7 +116,7 @@ enters the explicit dual-ready intermission before the next chapter.
   TLS 1.2 or newer. Private invitation delivery is a trust boundary. Public-service
   hardening and actual WAN verification remain open; see [Internet play](INTERNET_PLAY.md).
 
-All messages have integer `v: 7` and a string `type`. Initial responses:
+All messages have integer `v: 8` and a string `type`. Initial responses:
 
 | Message | Other fields | Meaning |
 | --- | --- | --- |

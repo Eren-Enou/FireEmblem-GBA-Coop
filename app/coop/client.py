@@ -24,6 +24,7 @@ class Model:
         self.pending = None
         self.syncing = False
         self.message = 'Connecting'
+        self.feedback = 'Connecting'
         self.observed = []
         self.progression = []
         self.level_ups = []
@@ -54,11 +55,16 @@ class Model:
                 self.level_ups = (self.level_ups + [change for change in changes if 'LEVEL UP' in change])[-4:]
             if self.decision:
                 self.cancel_decision('Battlefield refreshed; proposal cleared')
-            acknowledged = bool(self.pending and packet['result'] and packet['result']['id'] == self.pending)
+            acknowledged = bool(self.pending and packet['result'] and packet['result']['id'] == self.pending and
+                                packet['result']['team'] == self.team)
+            from app.coop.feedback import committed
+            self.feedback = committed(packet, self.packet)
+            if self.syncing and not acknowledged:
+                self.feedback = 'Battlefield refreshed. No automatic replay; inspect and choose again.'
             self.packet = packet
             if acknowledged:
                 self.decision_notice = f"COMMITTED r{packet['revision']}: {packet['result']['action']}"
-            if advancing or self.syncing or (packet['result'] and packet['result']['id'] == self.pending):
+            if acknowledged:
                 self.pending = None
             self.syncing = False
             result = packet['result']
@@ -83,6 +89,10 @@ class Model:
             if packet['id'] == self.pending:
                 self.pending = None
             self.message = 'Rejected: ' + packet['code']
+            self.feedback = self.message
+            if packet['code'] in ('stale_revision', 'stale_phase', 'state_mismatch'):
+                self.feedback = 'Battlefield changed while you acted. Resyncing; inspect and choose again.'
+                self.decision_notice = 'Not executed; no automatic replay'
             if self.packet and (packet['revision'] != self.packet['revision'] or
                                 packet['code'] in ('state_mismatch', 'stale_phase', 'stale_revision')):
                 self.syncing = True
@@ -97,7 +107,10 @@ class Model:
     def can_act(self):
         return bool(self.packet and set(self.peers) == set(TEAMS) and not self.pending and
                     not self.syncing and self.packet['state']['status'] == 'playing' and
-                    self.packet['state']['phase'] == self.team)
+                    (self.packet['state']['turns']['mode'] == 'shared' and
+                     self.team not in self.packet['state']['turns']['ready'] or
+                     self.packet['state']['turns']['mode'] == 'sequential' and
+                     self.packet['state']['phase'] == self.team))
 
     @property
     def can_ready(self):

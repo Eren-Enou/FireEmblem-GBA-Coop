@@ -25,6 +25,9 @@ class Session:
             from app.coop.tactics import project
             state = self.simulation.snapshot()
             state['tactics'] = project(self.simulation, state)
+            from app.coop.shared_turns import project_turns, outcome
+            state['turns'] = project_turns(self.simulation)
+            state['outcome'] = outcome(state)
             return state
         except Exception:
             if not self.simulation.fault or not hasattr(self, 'packet'):
@@ -33,6 +36,7 @@ class Session:
             # the last published board, never expose a half-initialized chapter.
             state = deepcopy(self.packet['state'])
             state['status'] = 'fault'
+            state['outcome'] = 'Host resolution stopped. Inspect the host log before restarting.'
             state['tactics'].update(status='unavailable', note='Host fault; previews cleared', units=[], threats=[], forecasts=[])
             for unit in state['units']:
                 for kind in ('moves', 'attacks', 'heals', 'consumables'):

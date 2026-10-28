@@ -1,10 +1,10 @@
-"""Version 7, bounded JSON only. No engine imports or executable serialization."""
+"""Version 8, bounded JSON only. No engine imports or executable serialization."""
 import hashlib
 import json
 import math
 import re
 
-VERSION = 7
+VERSION = 8
 MAX_FRAME = 262144
 TEAMS = ('player', 'other')
 
@@ -111,7 +111,15 @@ def validate_request(value):
 
 def validate_state(value):
     fields(value, ('campaign', 'scenario', 'ruleset', 'width', 'height', 'terrain', 'phase',
-                   'turn', 'status', 'objective', 'rng', 'units', 'tactics'))
+                   'turn', 'status', 'objective', 'rng', 'units', 'tactics', 'turns', 'outcome'))
+    fields(value['turns'], ('mode', 'ready'))
+    require(value['turns']['mode'] in ('sequential', 'shared'))
+    votes = value['turns']['ready']
+    require(type(votes) is list and len(votes) <= 2)
+    require(all(t in TEAMS for t in votes) and len(set(votes)) == len(votes))
+    require(value['turns']['mode'] == 'shared' or not votes)
+    if value['outcome'] is not None:
+        string(value['outcome'], 256)
     for key in ('scenario', 'ruleset', 'phase', 'objective'):
         string(value[key], 512)
     integer(value['width'], 1, 64)

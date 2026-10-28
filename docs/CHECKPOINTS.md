@@ -1,5 +1,11 @@
 # Chapter-boundary campaign recovery (Phases 5B and 5C)
 
+Current experimental branch uses wire v8; all peers must match. Sequential stays
+at the default scheduler. [Shared-turn comparison](SHARED_TURNS.md) adds opt-in
+live-only shared rounds, I details and prominent outcome/retry panels. Shared
+checkpoint/restore and intermission preparation are explicitly disabled.
+
+
 The host automatically checkpoints **Chapter 1's settled intermission** before
 end-chapter cleanup. Both friends can close all processes and return later.
 Recovery starts a fresh host at that intermission with new invitations; both

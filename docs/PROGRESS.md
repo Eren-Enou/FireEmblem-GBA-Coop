@@ -1,6 +1,99 @@
-# Progress - October 27, 2026
+# Progress - October 28, 2026
 
-## Current milestone: Phase 5D tactical reading and decisions
+## Phase 6A experimental shared turns (separate branch)
+
+This branch adds an opt-in shared allied round and playtest UX. Sequential remains
+`run_network.py host`'s default; stable `main` remains at `8027a8dea`. See
+[SHARED_TURNS.md](SHARED_TURNS.md) for the exact native round policy, one-PC
+comparison, checkpoint restrictions and limitations. The current experiment lives
+on `codex/shared-allied-turns`; it has not been merged into main.
+
+
+### Phase 6A implemented behavior and current limits
+
+- Opt-in `SharedSimulation` schedules both native opening upkeeps before input,
+  interleaves exclusively owned actions under the host lock, records independent
+  army Ready votes and runs Red only after both. Native timers, regeneration,
+  phase events, XP/durability and next-round action flags have focused checks.
+- Wire v8 publishes shared readiness/outcome. Same-revision stale commands reject
+  without native state/RNG changes. Another army's result cannot acknowledge a
+  pending request, including matching IDs. Rejoin retains Ready; accepted native
+  resolution completes despite disconnect and new commands pause.
+- Basic client emphasizes HP/actions/readiness/threats/forecasts and actual HP
+  changes; I opens full statistics/WEXP/calculation/network details. Terminal
+  panels name shared victory/defeat, known eliminated army and fresh retry steps.
+- `run_solo.py` opens a fresh host plus two visible clients with unique private
+  invitations and safe owned-child cleanup. Sequential is its default too.
+- Shared mode explicitly forbids saves/restore and disables preparation; both
+  chapters continue live. Sequential native adapter, manifest/schema, campaign,
+  preparation and engine files are unchanged. No asset/licensing changes.
+- Native initial focused run: **8 tests passed in 13.478 seconds**. TLS graphical
+  shared campaign: **46 matching snapshots / revision 45 shared victory** across
+  both chapters (`artifacts/shared-smoke/run-b9c3fbfb`). Initial screenshots were
+  inspected. Broader final results follow in the verification record below.
+- Sequential prepared TLS/corrupt-current recovery: **30 + 30 matching snapshots**,
+  new-session revision **29 victory** (`artifacts/checkpoint-smoke/run-3e618f4c`),
+  hosts 160540/119920, clients 148076/158160 then 81936/70196; digest
+  `aa0905c976241d301d8a3afa92b4403b2db99843e5c807e482d507255128482a`.
+- Actual old Phase 5C save restored exactly under wire v8, recapture hash
+  `03bbc53e40fab1b0a67b780e984b873d3677d8f17069238509300685d22b9f21`.
+  No migration, manifest bypass or overwrite. Shared save/restore CLI combinations
+  additionally rejected before startup. Launcher started three real processes
+  (32324/153068/164104) and confirmed all owned children exited on interruption.
+- Remaining: a new human shared/sequential pacing and retry usability comparison,
+  WAN pilot, broader phase-dependent event/skill/support/pair-up audit and a new
+  shared save contract. No two-human acceptance or general LT parity is claimed.
+  Next step is the short comparison in [SHARED_TURNS.md](SHARED_TURNS.md).
+
+Final focused repair/input/model run: **20 passed in 34.951 seconds**. The first
+combined run executed 229 tests in 545.681 seconds with one failure and one error:
+a legacy assertion expected the raw rejection message, and the new artificial
+50-pongs/second heartbeat test hit admission limits. Raw diagnostic rejection text
+is now preserved alongside separate friendly gameplay feedback; heartbeat cadence
+was corrected to 10/second. An intermediate retry was interrupted to fix a new
+test teardown ordering hang (closing live clients before waiting for server close).
+The focused pass covers both repairs, shared disconnect/readiness and existing
+inventory/model input checks. Admission limits and native gameplay were not relaxed.
+
+Final TLS shared victory: `artifacts/shared-smoke/run-6909c8c9`, host **152440**,
+clients **117768/153096**, **46 matching snapshots / revision 45 victory**, digest
+`fb75837f2a6176a5304a473fbc1b052ef1a2c30404af64f813ada459a177107d`.
+Final TLS passive defeat: `artifacts/shared-smoke/run-2b0eb690`, host **144124**,
+clients **5464/18848**, **13 matching snapshots / revision 12 defeat**, digest
+`076942e42f41be7ee660d058e3d47b01e8f7e9d68be5ae88a1389e374464c37a`.
+The latter is a real native Red AI loss with **Blue army eliminated**, not a
+client-injected terminal flag. Opening, Chapter 1 one-ready, victory and defeat
+captures were inspected. Read-only renders from the final revision-6 packet
+(`artifacts/phase6a-ui-review`) compare basic/details forecast views: the same
+packet/proposal, one observed state, no pending command and no sends. Stats,
+WEXP, advanced notes and digests appear only in details; no overlaps were found.
+
+An additional audit of those committed victory observations checked every
+heal/attack's native action completion, XP increase, nondecreasing WEXP and
+nonnegative own-item charge loss, plus unchanged units/RNG at first Ready.
+Blue performed **6 heals / 4 attacks**, Green **5 / 5**, with **9 own-action
+charges each**. Each captain had one missed attack with no charge loss, consistent
+with LT's native Uses.on_miss/uses_options policy. No synthetic damage or XP.
+Final surviving characters: Aren L2/89 XP, Mira L2/61, Tovan L3/72, Sela L2/50.
+
+A second fresh shared launch (133524/109956/164972) and a sequential launch
+(147524/161056/134432) both started three real processes and cleaned up all owned
+children. New invitations differed between runs; the earlier invitation file was
+byte-for-byte unchanged. No prior checkpoint directory was reused.
+
+Final combined regression: **229 tests passed in 526.102 seconds** on October
+28, 2026 (`artifacts/phase6a-regression-final.log`), using the full command in
+[TESTING.md](TESTING.md). This includes all 218 selected prior checks plus the 11
+shared-round cases. No runtime or test source changed after this passing run.
+The run covers native shared mechanics, same-revision races, disconnect during
+resolution/rejoin, model pending state, tactical/SDL input, sequential campaigns,
+prepared checkpoint save/recovery, healing/progression, transport/TLS and selected
+native movement/AI/XP/save regressions. This is a targeted regression selection,
+not the full upstream suite. Final asset/credential audit stages only Python and
+Markdown; native engine, sequential save rules and attribution remain unchanged.
+
+
+## Previous stable milestone: Phase 5D tactical reading and decisions
 
 ### Implemented
 

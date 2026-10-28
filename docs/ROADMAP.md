@@ -1,5 +1,29 @@
 # Roadmap
 
+## Phase 6A experimental shared turns (separate branch)
+
+This branch adds an opt-in shared allied round and playtest UX. Sequential remains
+`run_network.py host`'s default; stable `main` remains at `8027a8dea`. See
+[SHARED_TURNS.md](SHARED_TURNS.md) for the exact native round policy, one-PC
+comparison, checkpoint restrictions and limitations. The current experiment lives
+on `codex/shared-allied-turns`; it has not been merged into main.
+
+
+## Phase 6A: shared-turn and UX experiment
+
+- [x] Separate `codex/shared-allied-turns` branch; sequential remains default.
+- [x] Both armies act in one allied round with exclusive ownership and serialized native actions.
+- [x] Independent Ready votes, Red barrier and native two-army upkeep/endstep policy.
+- [x] Stale/resync feedback; pending acknowledgement bound to own army and request.
+- [x] Native interleaving, timers/regeneration/event counts and reconnect tests.
+- [x] TLS graphical shared two-chapter campaign with matching state histories.
+- [x] Prominent shared outcome/retry, I details, short committed HP changes.
+- [x] Fresh-host one-PC launcher; explicit shared checkpoint/preparation restriction.
+- [ ] New human shared-versus-sequential pacing and usability comparison.
+- [ ] Wider native phase-dependent event/skill/pair-up/support parity audit.
+- [ ] Versioned shared checkpoint contract and recovery before enabling shared saves.
+- [ ] Separate-PC/WAN playtest. Existing fog/complex tactical forecast limitations remain.
+
 ## Repository maintenance (established)
 
 - [x] GitHub `origin` and original Lex Talionis `upstream` verified.

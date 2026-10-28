@@ -22,6 +22,9 @@ async def host(args):
         client_context(tls)
     from app.coop.simulation import Simulation
     from app.coop.server import Host, Session
+    if args.turn_mode == 'shared':
+        from app.coop.shared_turns import SharedSimulation
+        Simulation = SharedSimulation
     simulation = Simulation(seed=args.seed or 0, scenario=args.scenario, growth_method=args.growth_method,
                             checkpoint_dir=args.checkpoint_dir if args.scenario == 'campaign' else None,
                             restore_dir=args.restore)
@@ -62,7 +65,8 @@ def main():
     server.add_argument('--scenario', choices=('training', 'progression', 'healing', 'campaign'), default=None)
     server.add_argument('--growth-method', choices=('Fixed', 'Random', 'Dynamic'),
                         help='Host-only player growth setting; progression drill defaults to Fixed')
-    server.add_argument('--checkpoint-dir', default='artifacts/campaign-checkpoints', help='Host-only chapter-boundary generations')
+    server.add_argument('--checkpoint-dir', default=None, help='Host-only chapter-boundary generations')
+    server.add_argument('--turn-mode', choices=('sequential', 'shared'), default='sequential')
     server.add_argument('--restore', help='Restore checkpoint directory at startup in this fresh host process')
     server.add_argument('--session-dir', default='artifacts/network')
     server.add_argument('--bind', default='127.0.0.1', help='Literal local IP; non-loopback requires TLS')
@@ -81,8 +85,10 @@ def main():
         if args.restore and (args.scenario not in (None, 'campaign') or args.seed is not None or args.growth_method is not None):
             parser.error('--restore uses the saved campaign/seed/growth settings; do not override them')
         args.scenario = args.scenario or ('campaign' if args.restore else 'training')
-        if args.restore and args.checkpoint_dir == 'artifacts/campaign-checkpoints':
-            args.checkpoint_dir = args.restore
+        if args.turn_mode == 'shared' and (args.checkpoint_dir or args.restore):
+            parser.error('Shared turns disable checkpoints/restore; use sequential mode for saved campaigns')
+        if args.turn_mode == 'sequential':
+            args.checkpoint_dir = args.checkpoint_dir or args.restore or 'artifacts/campaign-checkpoints'
         if not 0 <= args.port <= 65535:
             parser.error('port must be between 0 and 65535')
         if args.seed is not None and not 0 <= args.seed <= 1023:

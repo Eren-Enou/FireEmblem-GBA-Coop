@@ -1,5 +1,38 @@
 # Architecture and original engine assessment
 
+## Phase 6A experimental shared turns (separate branch)
+
+This branch adds an opt-in shared allied round and playtest UX. Sequential remains
+`run_network.py host`'s default; stable `main` remains at `8027a8dea`. See
+[SHARED_TURNS.md](SHARED_TURNS.md) for the exact native round policy, one-PC
+comparison, checkpoint restrictions and limitations. The current experiment lives
+on `codex/shared-allied-turns`; it has not been merged into main.
+
+
+## Phase 6A integration boundaries
+
+`shared_turns.SharedSimulation` subclasses the unmodified native adapter. It
+explicitly schedules Green's native PhaseChange/upkeep at the opening barrier,
+selects the owner team's native current pointer for one serialized action, and
+runs both closing endsteps before the normal Red -> Blue transition. The scoped
+pointer is restored in finally blocks. No upstream engine files change.
+Native ResetAll affects all units; every opening reset must finish before either
+army can submit input. The exact lifecycle and tested timer/event counts are in
+[SHARED_TURNS.md](SHARED_TURNS.md).
+
+`Session.state_projection` adds turns/outcome metadata; wire v8 validates and
+hashes it. `feedback.py` derives concise display results from committed packets.
+Model pending requests require matching army plus command ID; unrelated revisions
+cannot acknowledge them. Stale rejection resyncs without replay. The renderer's
+I details toggle and terminal panel are presentation only. `run_solo.py` owns and
+cleans up its three fresh processes and uses unique ignored run directories.
+
+Shared checkpoints/restore are rejected before engine startup and shared
+preparation is disabled. No experimental rules enter the sequential checkpoint
+manifest: Simulation, campaign, preparation, checkpoint modules and engine remain
+unchanged. Real Phase 5C generations still pass exact native recapture. Save
+support for shared rounds requires a separate lifecycle/compatibility milestone.
+
 ## Phase 5D tactical presentation
 
 `Session.state_projection` attaches `tactics.project` to the native

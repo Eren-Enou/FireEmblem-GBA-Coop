@@ -1,5 +1,11 @@
 # Private Internet play and the first two-PC test
 
+Current experimental branch uses wire v8; all peers must match. Sequential stays
+at the default scheduler. [Shared-turn comparison](SHARED_TURNS.md) adds opt-in
+live-only shared rounds, I details and prominent outcome/retry panels. Shared
+checkpoint/restore and intermission preparation are explicitly disabled.
+
+
 Phase 3A is locally verified: TLS, authenticated armies, liveness detection,
 bounded admission/rates, live-host rejoin and complete network battles.
 **Actual two-PC Internet connectivity remains unverified.** The physical remote
@@ -34,7 +40,7 @@ See the [network contract](NETWORK_PROTOCOL.md) and
    as a workaround.
 2. On each PC clone [the project](https://github.com/Eren-Enou/FireEmblem-GBA-Coop),
    or update its existing checkout. Compare `git rev-parse HEAD`: use the same
-   current protocol-v5 commit on host and both clients. Protocol v5 includes healing choices, weapon XP/mana and ping/pong controls; old clients must
+   current protocol-v8 commit on host and both clients. Protocol v5 includes healing choices, weapon XP/mana and ping/pong controls; old clients must
    update.
    Keep the inherited development resources present; do not create an
    unauthorized game-asset bundle for the other player.
